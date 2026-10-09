@@ -42,12 +42,12 @@ test('ordinary legacy directory takes precedence, migrating custom pets, fonts a
   const {target,localAppData,source:msix}=fixture(t);
   const source=path.join(path.dirname(target),'DSH Pet Companion');fs.mkdirSync(source,{recursive:true});
   fs.writeFileSync(path.join(msix,'settings.json'),'{}');
-  for(const name of ['settings.json','credentials.local.json','connection.json','auth.json'])fs.writeFileSync(path.join(source,name),'{}');
+  for(const name of ['settings.json','credentials.local.json','runtime-path.json','connection.json','auth.json'])fs.writeFileSync(path.join(source,name),'{}');
   for(const name of ['pet/custom-animation/webm/demo.webm','main-animation/webm/demo.webm','fonts/custom.ttf','logs/errors.jsonl']){
     const file=path.join(source,name);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,'fixture');
   }
   assert.deepEqual(importLegacyPackageData(target,{localAppData}),{imported:true});
-  for(const name of ['settings.json','credentials.local.json','pet/custom-animation/webm/demo.webm','main-animation/webm/demo.webm','fonts/custom.ttf','logs/errors.jsonl'])assert.deepEqual(fs.readFileSync(path.join(target,name)),fs.readFileSync(path.join(source,name)));
+  for(const name of ['settings.json','credentials.local.json','runtime-path.json','pet/custom-animation/webm/demo.webm','main-animation/webm/demo.webm','fonts/custom.ttf','logs/errors.jsonl'])assert.deepEqual(fs.readFileSync(path.join(target,name)),fs.readFileSync(path.join(source,name)));
   for(const name of ['connection.json','auth.json','.migration.lock','.migration-stage','.migration-pending.json'])assert.equal(fs.existsSync(path.join(target,name)),false);
   assert.deepEqual(importLegacyPackageData(target,{localAppData}),{imported:false});
 });

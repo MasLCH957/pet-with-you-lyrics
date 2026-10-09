@@ -72,6 +72,7 @@ async function cleanup() {
       fs.mkdirSync(path.join(oldDir, dir), { recursive: true }); fs.writeFileSync(path.join(oldDir, dir, 'fixture.bin'), 'fixture-asset');
     }
     write(path.join(oldDir, 'client-launcher.local.json'), { kind: 'file', file: process.execPath, name: 'Fixture client' });
+    write(path.join(oldDir, 'runtime-path.json'), { executable: path.join(fixture, 'custom-codex', 'codex.exe') });
     assert.ok(fs.existsSync(oldLink));
     write(stateFile, { port, settings: read(store.file), vault: read(store.vault) });
     console.log('PASS: old installed app saved encrypted fixture keys, profiles, size, font and Startup entry.');
@@ -106,6 +107,7 @@ async function cleanup() {
       for (const key of ['pet', 'api', 'apiProfiles', 'quota', 'positions', 'petEntries', 'onboarding']) assert.deepEqual(read(path.join(newDir, 'settings.json')).sections[key], before.settings.sections[key], key);
     }
     assert.equal(apiCalls, 2);
+    assert.deepEqual(read(path.join(newDir, 'runtime-path.json')), read(path.join(oldDir, 'runtime-path.json')));
     assert.deepEqual(read(path.join(oldDir, 'settings.json')), before.settings, 'Old rollback settings remain untouched');
     for (const dir of ['main-animation/webm', 'pet/custom-animation/webm', 'fonts']) assert.equal(fs.readFileSync(path.join(newDir, dir, 'fixture.bin'), 'utf8'), 'fixture-asset');
     assert.equal(fs.existsSync(path.join(newDir, '.migration-pending.json')), false);

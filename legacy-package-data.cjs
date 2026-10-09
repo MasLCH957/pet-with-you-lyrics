@@ -3,7 +3,7 @@ const path = require('node:path');
 const { DATA_DIRECTORY_NAME, LEGACY_DATA_DIRECTORY_NAME } = require('./project.cjs');
 
 const markers = ['settings.json', 'preferences.json', 'main-config.json'];
-const files = ['credentials.local.json', 'appearance.json', 'positions.json', 'tray-state.json', 'api-settings.json', 'api-settings.json.profiles', 'quota.json', 'quota.json.profiles', 'client-launcher.local.json', 'memory.json', ...markers];
+const files = ['credentials.local.json', 'appearance.json', 'positions.json', 'tray-state.json', 'api-settings.json', 'api-settings.json.profiles', 'quota.json', 'quota.json.profiles', 'client-launcher.local.json', 'runtime-path.json', 'memory.json', ...markers];
 const directories = ['fonts', 'pet', 'main-animation', 'logs', 'legacy-settings'];
 const names = [...directories, ...files];
 const hasSettings = directory => fs.existsSync(directory) && !fs.lstatSync(directory).isSymbolicLink() && markers.some(name => fs.existsSync(path.join(directory, name)));

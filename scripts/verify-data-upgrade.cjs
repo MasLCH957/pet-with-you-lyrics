@@ -110,7 +110,7 @@ async function cleanup() {
       let body = ''; for await (const chunk of req) body += chunk;
       if (req.headers.authorization !== 'Bearer fixture-upgrade-key' || JSON.parse(body).model !== 'fixture-model') { res.writeHead(401); return res.end('{}'); }
       apiCalls++; res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ reply: 'Upgrade fixture reply' }) } }] }));
+      res.end(JSON.stringify({ choices: [{ message: { content: 'Upgrade fixture reply' } }] }));
     });
     await new Promise(resolve => mock.listen(before.port, '127.0.0.1', resolve));
     for (let attempt = 0; attempt < 2; attempt++) {

@@ -23,11 +23,14 @@ const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 let child, closed, mock;
 async function stop() { if (child) { child.kill(); await closed; child = null; } }
 async function start(dataDir) {
+  const startupTarget = path.join(dataDir, 'startup-target.json');
+  if (fs.existsSync(startupTarget)) fs.unlinkSync(startupTarget);
   child = spawn(executable, ['--background'], { env, windowsHide: true, stdio: 'ignore' });
   closed = once(child, 'close');
   for (let i = 0; i < 200; i++) {
     if (child.exitCode !== null) throw new Error('Fixture pet exited before starting its service.');
-    try { const endpoint = read(path.join(dataDir, 'connection.json')); if (endpoint.pid === child.pid) return endpoint.base; } catch {}
+    // The HTTP listener precedes Electron ready; lifecycle sync writes this only after ready.
+    try { const endpoint = read(path.join(dataDir, 'connection.json')); if (endpoint.pid === child.pid && fs.existsSync(startupTarget)) return endpoint.base; } catch {}
     await pause(100);
   }
   throw new Error('Fixture pet startup timed out.');

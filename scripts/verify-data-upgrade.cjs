@@ -34,7 +34,8 @@ async function start(dataDir) {
 }
 async function call(base, route, body) {
   const response = await fetch(base + route, { method: body === undefined ? 'GET' : 'PUT', ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(30000) });
-  assert.equal(response.status, 200, route); return response.json();
+  const result = await response.json();
+  assert.equal(response.status, 200, route + ': ' + String(result.message || result.error || 'request failed')); return result;
 }
 function owned(dir) { return fs.existsSync(path.join(dir, marker)) && fs.readFileSync(path.join(dir, marker), 'utf8') === fixture; }
 async function cleanup() {
@@ -50,6 +51,7 @@ async function cleanup() {
   if (phase === 'cleanup') return cleanup();
   if (phase === 'seed') {
     for (const item of [oldDir, newDir, oldLink, newLink, stateFile]) assert.ok(!fs.existsSync(item), 'Expected a clean runner: ' + path.basename(item));
+    fs.mkdirSync(startup, { recursive: true });
     fs.mkdirSync(oldDir, { recursive: true }); fs.writeFileSync(path.join(oldDir, marker), fixture);
     write(stateFile, { owned: true });
     mock = http.createServer(); await new Promise(resolve => mock.listen(0, '127.0.0.1', resolve));

@@ -7,7 +7,8 @@ const http = require('node:http');
 if (process.platform !== 'win32' || process.env.GITHUB_ACTIONS !== 'true' || process.env.CI !== 'true') throw new Error('Use a disposable GitHub Windows runner; never run this against personal AppData.');
 const [phase, executable, fixture] = process.argv.slice(2);
 assert.ok(['seed', 'verify', 'cleanup'].includes(phase));
-assert.ok(fixture && path.resolve(fixture).startsWith(path.resolve(os.tmpdir()) + path.sep));
+// PowerShell can supply an 8.3 alias while Node returns the expanded temp path.
+assert.ok(fixture && fs.realpathSync.native(fixture).toLowerCase().startsWith(fs.realpathSync.native(os.tmpdir()).toLowerCase().replace(/[\\/]+$/, '') + path.sep));
 const stateFile = path.join(fixture, 'data-upgrade-fixture.json');
 const oldDir = path.join(process.env.APPDATA, 'DSH Pet Companion');
 const newDir = path.join(process.env.APPDATA, 'pet-with-you');

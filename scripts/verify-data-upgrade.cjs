@@ -102,7 +102,7 @@ async function cleanup() {
       assert.equal((await call(base, '/appearance')).family, 'Segoe UI');
       assert.equal((await call(base, '/client-launcher')).configured, true);
       const reply = await fetch(base + '/chat', { method: 'POST', body: JSON.stringify({ text: 'Fixture check' }), signal: AbortSignal.timeout(30000) }).then(r => r.json());
-      assert.equal(reply.reply, 'Upgrade fixture reply', 'Migrated real Windows encryption must decrypt correctly');
+      assert.equal(reply.reply, 'Upgrade fixture reply', 'Migrated real Windows encryption must decrypt correctly: ' + (reply.message || 'unexpected reply'));
       for (let i = 0; i < 50 && !fs.existsSync(newLink); i++) await pause(100);
       assert.ok(fs.existsSync(newLink)); assert.equal(fs.existsSync(oldLink), false);
       const { psString } = require('../autostart.cjs');

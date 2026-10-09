@@ -3,7 +3,7 @@ const path = require('node:path');
 const { DATA_DIRECTORY_NAME, LEGACY_DATA_DIRECTORY_NAME } = require('./project.cjs');
 
 const markers = ['settings.json', 'preferences.json', 'main-config.json'];
-const files = ['credentials.local.json', 'appearance.json', 'positions.json', 'tray-state.json', 'api-settings.json', 'api-settings.json.profiles', 'quota.json', 'quota.json.profiles', 'client-launcher.local.json', 'runtime-path.json', 'memory.json', ...markers];
+const files = ['Local State', 'credentials.local.json', 'appearance.json', 'positions.json', 'tray-state.json', 'api-settings.json', 'api-settings.json.profiles', 'quota.json', 'quota.json.profiles', 'client-launcher.local.json', 'runtime-path.json', 'memory.json', ...markers];
 const directories = ['fonts', 'pet', 'main-animation', 'logs', 'legacy-settings'];
 const names = [...directories, ...files];
 const hasSettings = directory => fs.existsSync(directory) && !fs.lstatSync(directory).isSymbolicLink() && markers.some(name => fs.existsSync(path.join(directory, name)));
@@ -56,7 +56,15 @@ function importLegacyPackageData(dataDir, { localAppData = process.env.LOCALAPPD
       fs.rmSync(stage, { recursive: true, force: true });
       fs.mkdirSync(stage);
       const pending = entries.filter(name => !fs.existsSync(path.join(dataDir, name)));
-      for (const name of pending) fs.cpSync(path.join(source, name), path.join(stage, name), { recursive: true, filter: file => !fs.lstatSync(file).isSymbolicLink() });
+      for (const name of pending) {
+        if (name === 'Local State') {
+          // Windows safeStorage ciphertext depends on this DPAPI-protected encryption key.
+          // Do not import unrelated Chromium state, caches or login sessions.
+          const state = JSON.parse(fs.readFileSync(path.join(source, name), 'utf8'));
+          const encryptedKey = state.os_crypt?.encrypted_key;
+          fs.writeFileSync(path.join(stage, name), JSON.stringify(typeof encryptedKey === 'string' ? { os_crypt: { encrypted_key: encryptedKey } } : {}), { mode: 0o600 });
+        } else fs.cpSync(path.join(source, name), path.join(stage, name), { recursive: true, filter: file => !fs.lstatSync(file).isSymbolicLink() });
+      }
       const temp = journal + '.tmp';
       fs.writeFileSync(temp, JSON.stringify({ entries: pending }));
       fs.renameSync(temp, journal);

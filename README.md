@@ -4,11 +4,13 @@
 
 一个运行在 Windows 桌面上的动画桌宠：可以随机玩耍、手动点播、聊天与碎碎念，也可以连接 Codex 桌面客户端，展示任务进度和账户额度。
 
-> `0.1.0-alpha.7.1.6` Windows 公开预览版：[下载安装程序](https://github.com/Refining-colors/pet-with-you/releases/tag/v0.1.0-alpha.7.1.6)。纯桌宠无需另装 Node.js、Git 或 Codex CLI。由 [Refining-colors](https://github.com/Refining-colors) 维护。项目代码采用 MIT，角色动画按原作条款说明。
+> `1.0.0` Windows 版：[下载安装程序](https://github.com/Refining-colors/pet-with-you/releases/tag/v1.0.0)。纯桌宠无需另装 Node.js、Git 或 Codex CLI。由 [Refining-colors](https://github.com/Refining-colors) 维护。项目代码采用 MIT，角色动画按原作条款说明。
 
 基于 [PC2005-cloud/dsh-pet](https://github.com/PC2005-cloud/dsh-pet) 改造与扩展，保留原作角色和 106 段动画。原作代码、素材与本项目适配工作的关系见 [来源与致谢](ATTRIBUTION.md)。
 
 [快速开始](#快速开始) · [功能介绍](#功能介绍) · [动画图鉴](#动画图鉴) · [模式与连接](#模式与连接) · [常见问题](#常见问题) · [全流程配置](docs/INSTALL.md) · [使用手册](docs/USER_GUIDE.md) · [排错](docs/TROUBLESHOOTING.md)
+
+> 1.0.0 将个人数据目录统一为 `%APPDATA%\pet-with-you`。旧版用户退出桌宠后直接覆盖安装，首次启动自动迁移设置和密钥，旧目录保留回退。
 
 ## 看看它能做什么
 
@@ -71,7 +73,7 @@
 
 ### 推荐：下载安装版
 
-1. 打开 [Releases 下载页](https://github.com/Refining-colors/pet-with-you/releases/tag/v0.1.0-alpha.7.1.6)，下载 **pet-with-you-0.1.0-alpha.7.1.6-x64-setup.exe**。
+1. 打开 [Releases 下载页](https://github.com/Refining-colors/pet-with-you/releases/tag/v1.0.0)，下载 **pet-with-you-1.0.0-x64-setup.exe**。
 2. 双击安装，选择目录和是否创建桌面快捷方式。
 3. 从桌面或开始菜单中的 **pet-with-u** 启动，默认纯桌宠；右键打开设置。
 
@@ -148,7 +150,7 @@ node launch.cjs
 | 手动聊天、手动碎碎念 | 是 |
 | 自动碎碎念命中概率并实际生成 | 是 |
 
-- 配置和运行数据位于当前 Windows 用户的 `%APPDATA%\DSH Pet Companion`。这是保留的兼容目录名，升级改名不会丢失设置，具体用户名/磁盘路径不写死。
+- 1.0.0 源码的配置和运行数据位于 `%APPDATA%\pet-with-you`。首次运行从旧 `DSH Pet Companion` 目录轻量迁移设置、密钥和自定义素材，旧目录保留作回退；具体用户名/磁盘路径不写死。
 - 自有 API 密钥和手动查询密钥通过系统加密保存；界面显示掩码。
 - 聊天内容会发送给你选择的服务，聊天记忆可保存在本机；碎碎念历史只保留在本次桌宠运行内。
 - 当前项目的错误日志不记录密钥、聊天正文或服务商完整响应。

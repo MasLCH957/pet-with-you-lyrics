@@ -61,7 +61,9 @@ app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 // 显式定名：Helper 是被 `electron.exe <main.js>` 直接拉起的，Electron 取不到 app 名会回落成
 // "Electron"，userData 便落到 %APPDATA%\Electron —— 那是所有这么跑的 Electron 脚本的公共目录，
 // 我们的 DPI 缓存与 Chromium profile 都会和别人混在一起。必须赶在任何 getPath('userData') 之前设。
-app.setName('dsh-pet-electron-helper');
+const project = require('../project.cjs');
+app.setName(project.PRODUCT_NAME);
+app.setPath('userData', project.dataDirectory(app.getPath('appData')));
 
 /** DPI 探测子进程模式：不建窗口，只把主屏 scaleFactor 打到 stdout 就退出（见 probePrimaryScale） */
 const DPI_PROBE = process.env.DSH_PET_DPI_PROBE === '1' || process.argv.includes('--dsh-pet-dpi-probe');
@@ -307,6 +309,7 @@ const windowIgnore = new Map();
 
 /** 翻转整窗穿透的**唯一出口**：状态与 windowIgnore 镜像永远一起更新（穿透期间保留 forward） */
 function setWindowIgnore(win, ignore) {
+  if (windowIgnore.get(win.id) === ignore) return;
   win.setIgnoreMouseEvents(ignore, { forward: true });
   windowIgnore.set(win.id, ignore);
 }

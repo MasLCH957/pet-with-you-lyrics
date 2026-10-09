@@ -22,10 +22,13 @@ app.setName(PRODUCT_NAME);
 const appId='im.refiningcolors.petwithyou'+(developmentPreview?'.dev':'');
 if(process.platform==='win32')app.setAppUserModelId(appId);
 const dataDir=dataDirectory(app.getPath('appData'));
-if(!developmentPreview&&!process.env.PET_TEST_DATA_DIR)require('./legacy-package-data.cjs').importLegacyPackageData(dataDir);
 app.setPath('userData',dataDir);
 app.disableHardwareAcceleration();
 if(!app.requestSingleInstanceLock()){app.quit();}else{
+  if(!developmentPreview&&!process.env.PET_TEST_DATA_DIR&&!process.env.PET_DEV_DATA_DIR){
+    try{require('./legacy-package-data.cjs').importLegacyPackageData(dataDir);}
+    catch(error){dialog.showErrorBox('个人设置迁移未完成',error.message);app.exit(1);return;}
+  }
   const settingsStore=new (require('./settings-store.cjs').SettingsStore)(dataDir);
   let service,tray,settings,policy,runtimeStarted=false,trayVisible=true;
   let startupSignature='',quitApproved=false,quitSaving=false,lastClientRunning=null,shortcutPromptPending=false;

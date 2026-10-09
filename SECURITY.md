@@ -10,7 +10,7 @@ API/查询密钥使用 Electron `safeStorage`，由 Windows 用户环境加密�
 
 ## 不应提交的内容
 
-- `%APPDATA%\DSH Pet Companion` 整个个人数据目录。
+- `%APPDATA%\pet-with-you` 整个个人数据目录，以及升级前的 `%APPDATA%\DSH Pet Companion` 回退副本。
 - Codex 的 `auth.json`、包含密钥的 `config.toml`、会话记录、聊天记忆。
 - API 密钥、查询密钥、环境变量文件、完整服务端返回值、私人字体和私密截图。
 

@@ -1012,8 +1012,8 @@ class PetSprite {
     // 减去窗口屏幕原点（CSS 系）即窗口内坐标
     const wx = Number.isFinite(e.clientX) ? e.clientX : toLocal(e.screenX) - (this.pos.x + VIEW.x - this.margin.l);
     const wy = Number.isFinite(e.clientY) ? e.clientY : toLocal(e.screenY) - (this.pos.y + VIEW.y - this.margin.t);
-    const br=this.bubble.getBoundingClientRect();
-    const overBubble=this.bubble.classList.contains('is-on')&&this.bubble.classList.contains('can-copy')&&wx>=br.left&&wx<=br.right&&wy>=br.top&&wy<=br.bottom;
+    const br=this.bubble.classList.contains('is-on')&&this.bubble.classList.contains('can-copy')?this.bubble.getBoundingClientRect():null;
+    const overBubble=!!br&&wx>=br.left&&wx<=br.right&&wy>=br.top&&wy<=br.bottom;
     if(this.bubbleHover!==overBubble){this.bubbleHover=overBubble;this.syncInputBusy();this.updateReplyTimer();this.updateQuotaTimer();}
     const px = wx - this.margin.l;
     const py = wy - this.margin.t;

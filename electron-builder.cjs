@@ -1,4 +1,4 @@
-const { files } = require('./export-source.cjs');
+const { runtimeFiles } = require('./export-source.cjs');
 module.exports = {
   appId: 'im.refiningcolors.petwithyou',
   productName: 'pet-with-you',
@@ -10,8 +10,8 @@ module.exports = {
   asar: false,
   compression: 'maximum',
   files: [
-    ...files.filter(name => name.endsWith('.md') || (name.endsWith('.cjs') && !['export-source.cjs', 'electron-builder.cjs', 'launch.cjs'].includes(name)) || ['package.json','tray.png','LICENSE.upstream','PREVIEW-NOTICE.txt','hook.cmd','Review-Hooks.cmd','Uninstall-Integration.cmd','startup-watch.ps1','fullscreen-watch.ps1','cleanup-startup.ps1','config.mjs'].includes(name)),
-    'LICENSE', 'shell-shortcut.ps1', 'repair-shortcuts.ps1', 'launch-detached.ps1', 'assets/**/*', 'runtime/**/*', 'ui/**/*', 'docs/**/*', 'scripts/dev-env.cjs', 'build/icon.ico', 'build/codex-withu.ico', 'build/codex-withu.png',
+    ...runtimeFiles, 'assets/**/*', 'runtime/**/*', 'ui/**/*', 'README.md', 'SECURITY.md', 'CHANGELOG.md', 'docs/**/*',
+    '!docs/releases/**/*', '!docs/PROJECT_HISTORY.md', '!docs/VIDEO*.md', '!docs/MEDIA_GUIDE.md', '!docs/WORKSPACE.md',
     '!docs/images/**/*', '!assets/fonts/**/*', '!**/node_modules/**/*', '!**/.local/**/*', '!**/*.log',
   ],
   win: { target: [{ target: 'nsis', arch: ['x64'] }], icon: 'build/icon.ico', signAndEditExecutable: true },
@@ -29,5 +29,5 @@ module.exports = {
     installerLanguages: ['zh_CN', 'en_US'],
     license: 'PREVIEW-NOTICE.txt',
   },
-  publish: [{ provider: 'github', owner: 'Refining-colors', repo: 'pet-with-you', releaseType: 'prerelease' }],
+  publish: [{ provider: 'github', owner: 'Refining-colors', repo: 'pet-with-you', releaseType: 'release' }],
 };

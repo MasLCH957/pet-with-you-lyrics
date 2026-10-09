@@ -7,7 +7,7 @@ pet-with-you/                 # 独立源码仓库；实际路径仍可自行选
   *.cmd / launcher.vbs       # 面向用户的安装、启动、检查和录制入口
   bootstrap.cjs / main.cjs / launch.cjs # 打包入口、生命周期与源码启动器
   electron-builder.cjs / build/ # Windows 安装器配置、图标与快捷方式选项
-  project.cjs                # 展示名与兼容的数据路径
+  project.cjs                # 展示名与正式、测试数据路径
   server.cjs                 # 本地带随机令牌的服务、路由与功能协调
   *-client.cjs / quota.cjs    # API、Codex、额度与流式请求
   state.cjs / session-monitor.cjs / hook.cjs
@@ -15,7 +15,7 @@ pet-with-you/                 # 独立源码仓库；实际路径仍可自行选
   settings-store.cjs         # 统一 settings.json、旧配置迁移与本机密钥分离
   preferences.cjs / appearance.cjs / positions.cjs
                              # 设置、字体和位置持久化
-  autostart.cjs / startup-watch.ps1 # 登录时一次性启动，保留旧文件名兼容
+  autostart.cjs / startup-watch.ps1 # 登录时一次性启动，迁移旧 Startup 入口
   shell-shortcut.ps1         # 共享 Unicode Windows 快捷方式读写
   client-launcher*.cjs / launch-detached.ps1 # 无常驻联动入口、Explorer 独立启动
   window-policy.cjs / window-observer.cjs # 窗口规则、检测重连与无焦点层级修复
@@ -47,7 +47,7 @@ pet-with-you/                 # 独立源码仓库；实际路径仍可自行选
 ## 维护决策
 
 - 产品展示名统一到 pet-with-you；`project.cjs` 集中数据路径，运行程序选择也遵循测试目录隔离。
-- 保留 `%APPDATA%/DSH Pet Companion` 和原 Startup 快捷方式名称，避免现有密钥、位置、启动入口丢失或重复；不要求搬动当前项目文件夹。
+- 1.0.0 使用 `%APPDATA%/pet-with-you` 和 `pet-with-you.lnk`；由 `legacy-package-data.cjs` 在配置打开前迁移旧设置。优先普通旧目录，兼容 MSIX 重定向目录；暂存加提交记录支持中断续作，不覆盖现有新配置、不迁移旧运行端点或 Chromium 缓存。旧目录只保留本机回退副本。
 - 删除过时的启动/周期额度查询与无服务端功能的广播/触发计数轮询。额度只有手动或用户开启的新回合结束触发。
 - 本地记录首次恢复的历史完成不会递增自动查询计数。
 - 删除主进程内两套早期验证分支及上游遗留冒烟脚本，统一 `npm run test:ui`，使用临时数据，避免旧脚本误碰真实账户。
@@ -62,6 +62,16 @@ pet-with-you/                 # 独立源码仓库；实际路径仍可自行选
 `server.cjs` 和 `runtime/sprite.js` 仍偏大，是后续按路由/气泡/交互进一步拆分的候选；本轮没有为了目录好看大规模搬迁这些稳定接口。渲染脚本按顺序共享作用域，改为模块前要验证动画切换、缩放与拖动。
 
 从上游继承的部分 DSH 协议名、动画配置字段和内部兼容代码仍保留。它们不是用户机器绝对路径，不应简单替换为新品牌以免破坏协议或素材配置。余额刷新字段可能仍在兼容配置中，但不再驱动周期查询。
+
+### 1.0.0 重整边界
+
+`export-source.cjs` 分别维护源码导出清单和 `runtimeFiles` 运行文件清单；安装器直接消费后者，避免用复杂的扩展名判断把开发工具混入运行包。安装包不再携带开发约定、开发历程、媒体规划和旧发布文档；这些仍留在仓库中，用户手册、许可、角色素材与自定义扩展运行代码继续保留。
+
+迁移白名单包含 `settings.json`、`credentials.local.json`、旧分散设置、`fonts/`、`pet/`、`main-animation/`、日志、聊天记忆及联动启动器记录。密钥仍由同一 Windows 用户解密，不能以迁移为由把密钥文件分享给他人。旧运行端点、登录文件、缓存和旧运行程序不迁移。迁移失败显示具体提示，保留原目录；已存在新配置时不覆盖。迁移期间要求退出旧桌宠，避免旧进程在复制时修改配置。
+
+自定义能力继续通过 `settings.json` 中的 `petEntries`、`pet/<名称>-animation/` 与 `main-animation/` 工作；不删除尚未使用的动画配置、多个宠物、WebM/MOV 素材路径、字体导入和继承合并逻辑。迁移后的隔离服务测试覆盖自定义角色读取、两类动画素材读取、尺寸持久化和密钥引用配对。没有进行不可验证的角色生成器裁剪或素材转码。
+
+2026-10-10 核查 457 个源码导出文件，未发现内容完全重复的非空文件。1.0.0 测试运行包排除了约 81 KiB 的开发文档，应用目录净减约 67 KiB（迁移逻辑与使用指引有新增），不代表完整安装 EXE 的压缩后降幅。Electron 主程序约 213 MiB，106 段动画约 52 MiB，仍是主要体积来源；已用固实无损压缩，不为凑减量删除运行组件、语言或自定义扩展功能。`server.cjs` 和渲染器的进一步拆分留待按职责逐步验证，不能靠移动文件本身声称缩小了包体。
 
 外部兼容边界：Codex 本地会话格式、Hooks、app-server 版本；Windows 缩放/多显示器/Startup 权限；服务商 Chat Completions 和额度接口。测试使用模拟服务，不能证明每个安装渠道/中转站都兼容，也不能视作独立安全审计。
 

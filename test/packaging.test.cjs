@@ -4,6 +4,14 @@ const fs = require('node:fs'), path = require('node:path'), os = require('node:o
 const { execFileSync } = require('node:child_process');
 const root = path.resolve(__dirname, '..');
 
+test('runtime manifest contains migration and custom-pet configuration without source build helpers',()=>{
+  const {runtimeFiles}=require('../export-source.cjs');
+  assert.equal(runtimeFiles.length,new Set(runtimeFiles).size);
+  for(const name of ['legacy-package-data.cjs','settings-store.cjs','config.mjs','project.cjs','hook.cmd'])assert.ok(runtimeFiles.includes(name));
+  for(const name of ['export-source.cjs','electron-builder.cjs','launch.cjs'])assert.ok(!runtimeFiles.includes(name));
+  for(const name of runtimeFiles)assert.ok(fs.existsSync(path.join(root,name)),name);
+});
+
 test('unattended source installation exits promptly when Node is missing', { skip: process.platform !== 'win32' }, () => {
   const { spawnSync } = require('node:child_process');
   const env = { ...process.env, PATH: path.join(process.env.WINDIR, 'System32') };

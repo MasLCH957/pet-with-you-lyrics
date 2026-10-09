@@ -62,6 +62,8 @@ module.exports=async function verify({service,openSettings,getSettings,largeTray
     assert.equal(await pet().webContents.executeJavaScript('window.__dshPetDebug.configOk'),true);
     const config=await request('/config');config.main.animationWeights.move=0;
     await request('/config',config.main);await sleep(600);
+    console.error('VERIFY_STAGE: mouse-overhead-verify.cjs');
+    await require('./mouse-overhead-verify.cjs')(pet());
     console.error('VERIFY_STAGE: menu-frame-verify.cjs');
     await require('./menu-frame-verify.cjs')(pet());
     console.error('VERIFY_STAGE: interaction-options-verify.cjs');

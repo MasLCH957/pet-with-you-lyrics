@@ -7,6 +7,18 @@ const {QuotaService,validate}=require('../quota.cjs');
 const {normalizeStats}=require('../crs.cjs');
 const base={endpoint:'https://quota.example.test/balance',credential:'manual',header:'Authorization',bearer:true,format:'remaining',valuePath:'data.balance',totalPath:'',scale:1,unit:'USD',name:'Test'};
 function service(fetcher){return new QuotaService({dataDir:fs.mkdtempSync(path.join(os.tmpdir(),'pet-quota-')),client:{},protect:s=>Buffer.from(s).toString('base64'),unprotect:s=>Buffer.from(s,'base64').toString(),fetcher});}
+
+test('DeepSeek official balance accepts array index and numeric string without a total quota',async()=>{
+  const s=service(async(url,options)=>{
+    assert.equal(url,'https://api.deepseek.com/user/balance');
+    assert.equal(options.headers.Authorization,'Bearer fixture-deepseek');
+    return new Response(JSON.stringify({is_available:true,balance_infos:[{currency:'CNY',total_balance:'110.00',granted_balance:'10.00',topped_up_balance:'100.00'}]}));
+  });
+  try{
+    s.save({selected:'proxy',proxy:{...base,endpoint:'https://api.deepseek.com/user/balance',valuePath:'balance_infos.0.total_balance',unit:'CNY',key:'fixture-deepseek'}});
+    const result=await s.queryProxy();assert.equal(result.ok,true);assert.equal(result.value,110);assert.equal(result.unit,'CNY');assert.equal(result.percent,undefined);
+  }finally{fs.rmSync(path.dirname(s.file),{recursive:true,force:true});}
+});
 test('manual key stays out of public settings; only explicit endpoint receives it, cached without model calls',async()=>{
   let calls=0;const s=service(async(url,options)=>{calls++;assert.equal(url,base.endpoint);assert.equal(options.headers.Authorization,'Bearer fake-test-key');assert.equal(options.redirect,'error');return new Response(JSON.stringify({data:{balance:12.5}}));});
   const saved=s.save({selected:'proxy',proxy:{...base,key:'fake-test-key'}});

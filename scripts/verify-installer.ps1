@@ -74,6 +74,10 @@ try {
     $petHooks = @{ hooks = @{ Stop = @(@{ hooks = @(@{type='command'; command=$petHookCommand}, @{type='command'; command='echo fixture-unrelated'}) }) } } | ConvertTo-Json -Depth 8
     [IO.File]::WriteAllText($petHooksPath, $petHooks, (New-Object Text.UTF8Encoding($false)))
     $petOldVersion = (Get-Content -LiteralPath (Join-Path $petInstall 'resources\app\package.json') -Raw | ConvertFrom-Json).version
+    if ($PreviousInstaller) {
+      & node (Join-Path $PSScriptRoot 'verify-data-upgrade.cjs') seed $petExe $petTemp
+      if ($LASTEXITCODE -ne 0) { throw 'Old-version migration fixture could not be created.' }
+    }
     $petSavedLink = New-PetShortcut $petSavedShortcut
     $petSavedLink.TargetPath = $petExe
     $petSavedLink.Arguments = '--settings'
@@ -92,6 +96,10 @@ try {
     $petSavedLink = New-PetShortcut $petSavedShortcut
     if ($petSavedLink.IconLocation -ne ($petExe + ',0') -or $petSavedLink.Arguments -ne '--settings' -or $petSavedLink.Description -ne 'Settings-created shortcut fixture') { throw 'Upgrade did not repair the existing shortcut icon or changed launch options.' }
     Write-Output "PASS: upgrade $petOldVersion -> $petNewVersion reuses its registered folder, preserves Hooks, user data and links."
+    if ($PreviousInstaller) {
+      & node (Join-Path $PSScriptRoot 'verify-data-upgrade.cjs') verify $petExe $petTemp
+      if ($LASTEXITCODE -ne 0) { throw 'Production data-directory migration failed.' }
+    }
     & node (Join-Path $PSScriptRoot 'verify-packaged.cjs') $petExe
     if ($LASTEXITCODE -ne 0) { throw 'Installed application smoke test failed.' }
     if ($petShortcut) {
@@ -115,9 +123,17 @@ try {
     if((Test-Path -LiteralPath $petJointDesktop) -or (Test-Path -LiteralPath $petJointMenu)){throw 'Uninstaller left its joint launcher behind.'}
     if (-not (Test-Path -LiteralPath (Join-Path $petData 'retain.txt'))) { throw 'Uninstaller removed user data.' }
     Write-Output "PASS: installed app, desktop shortcut=$petShortcut, Start Menu icon, uninstall, retained user data."
+    if ($PreviousInstaller) {
+      & node (Join-Path $PSScriptRoot 'verify-data-upgrade.cjs') cleanup $petExe $petTemp
+      if ($LASTEXITCODE -ne 0) { throw 'Migration fixture cleanup failed.' }
+    }
   }
 } finally {
   Uninstall-TestPet
+  if ($PreviousInstaller -and (Test-Path -LiteralPath (Join-Path $petTemp 'data-upgrade-fixture.json'))) {
+    & node (Join-Path $PSScriptRoot 'verify-data-upgrade.cjs') cleanup (Join-Path $petInstall 'pet-with-you.exe') $petTemp
+    if ($LASTEXITCODE -ne 0) { throw 'Migration fixture remains for diagnosis.' }
+  }
   if (Test-Path -LiteralPath $petSavedShortcut) { Remove-Item -LiteralPath $petSavedShortcut -Force }
   $env:CODEX_HOME = $petOldCodex
   $env:PET_TEST_DATA_DIR = $petOldData

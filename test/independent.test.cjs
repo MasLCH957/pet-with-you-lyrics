@@ -87,9 +87,11 @@ test('Startup shortcut uses current paths with spaces and is removable without a
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),"pet startup ' 中文 🌊 paths-"));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
   const {syncStartup,psString}=require('../autostart.cjs');
   const opts={dataDir:dir,shortcutDir:dir,root:path.resolve(__dirname,'..'),executable:process.execPath,preferences:{mode:'pet',autostart:true}};
-  syncStartup(opts);const shortcut=path.join(dir,'DSH Pet Companion.lnk');assert.ok(fs.existsSync(shortcut));
+  syncStartup(opts);const shortcut=path.join(dir,'pet-with-you.lnk');assert.ok(fs.existsSync(shortcut));
   const read=`. ${psString(path.join(__dirname,'../shell-shortcut.ps1'))};[Console]::OutputEncoding=[Text.Encoding]::UTF8;$s=New-PetShortcut ${psString(shortcut)};$s.Arguments`;
   const args=require('node:child_process').execFileSync('powershell.exe',['-NoProfile','-ExecutionPolicy','Bypass','-Command',read],{encoding:'utf8',windowsHide:true});
   assert.ok(args.includes('"'+dir+'"'));assert.ok(args.includes('startup-watch.ps1'));
+  const legacyShortcut=path.join(dir,'DSH Pet Companion.lnk');fs.renameSync(shortcut,legacyShortcut);
+  syncStartup(opts);assert.ok(fs.existsSync(shortcut));assert.equal(fs.existsSync(legacyShortcut),false);
   syncStartup({...opts,preferences:{...opts.preferences,autostart:false}});assert.equal(fs.existsSync(shortcut),false);
 });

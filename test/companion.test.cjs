@@ -6,6 +6,27 @@ const path=require('node:path');
 const {TaskState}=require('../state.cjs');
 const {startServer}=require('../server.cjs');
 
+test('renamed data directory preserves custom pet entries, main overrides and editable sizes',async t=>{
+  const root=fs.mkdtempSync(path.join(os.tmpdir(),'pet-custom-upgrade-'));
+  const source=path.join(root,'DSH Pet Companion'),dataDir=path.join(root,'pet-with-you');
+  const store=new (require('../settings-store.cjs').SettingsStore)(source);
+  store.set('api',{baseUrl:'https://fixture.example.test/v1',model:'fixture',secret:'encrypted-test-value'});
+  store.set('petEntries',{custom:{pets:[{id:'custom-pet',name:'Fixture pet',size:321}]}});
+  for(const dir of ['pet/custom-animation/webm','main-animation/webm']){
+    fs.mkdirSync(path.join(source,dir),{recursive:true});fs.writeFileSync(path.join(source,dir,'fixture.webm'),'custom-animation-fixture');
+  }
+  require('../legacy-package-data.cjs').importLegacyPackageData(dataDir,{localAppData:''});
+  assert.equal(new (require('../settings-store.cjs').SettingsStore)(dataDir).get('api').secret,'encrypted-test-value');
+  const service=await startServer({dataDir});
+  t.after(async()=>{await service.close();fs.rmSync(root,{recursive:true,force:true});});
+  const config=await fetch(service.base+'/config').then(r=>r.json());
+  assert.equal(config.custom.pets[0].size,321);assert.equal(config.custom.pets[0].name,'Fixture pet');
+  for(const entry of ['main','custom'])assert.equal(await fetch(service.base+'/thumb/'+entry+'/fixture.webm').then(r=>r.text()),'custom-animation-fixture');
+  const result=await fetch(service.base+'/config/size',{method:'PUT',body:JSON.stringify({id:'custom-pet',size:400})});
+  assert.equal(result.status,200);
+  assert.equal(new (require('../settings-store.cjs').SettingsStore)(dataDir).get('petEntries').custom.pets[0].size,400);
+});
+
 test('multi-session status priority, interrupted removal, terminal expiry',()=>{
   let now=100;const s=new TaskState(()=>now);
   s.accept({session_id:'a',hook_event_name:'UserPromptSubmit'});now++;

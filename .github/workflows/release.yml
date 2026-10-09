@@ -5,7 +5,7 @@ on:
       tag:
         description: Existing version tag to build
         required: true
-        default: v0.1.0-alpha.7.1.6
+        default: v1.0.0
 permissions:
   contents: write
 concurrency:
@@ -52,6 +52,19 @@ jobs:
           if ($petOldHash -ne 'cab7dfe8e28941581f5502dadd98697d81a4964be474d1db9aa846a6670e8e09') { throw 'Previous installer checksum mismatch.' }
           powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-installer.ps1 -PreviousInstaller $petOldInstaller
           if ($LASTEXITCODE -ne 0) { throw 'Cross-version upgrade verification failed.' }
+      - name: Verify upgrade and data migration from latest preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $petOldFolder = Join-Path $env:RUNNER_TEMP 'pet-latest-preview'
+          gh release download v0.1.0-alpha.7.1.6 --repo Refining-colors/pet-with-you --pattern pet-with-you-0.1.0-alpha.7.1.6-x64-setup.exe --dir $petOldFolder
+          if ($LASTEXITCODE -ne 0) { throw 'Previous installer download failed.' }
+          $petOldInstaller = Join-Path $petOldFolder 'pet-with-you-0.1.0-alpha.7.1.6-x64-setup.exe'
+          $petOldHash = (Get-FileHash -LiteralPath $petOldInstaller -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($petOldHash -ne 'bd1c1098c711b2f0dda2c8b79908c1269df25e1d91f425b17f6c3a68d5ce1b17') { throw 'Previous installer checksum mismatch.' }
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-installer.ps1 -PreviousInstaller $petOldInstaller
+          if ($LASTEXITCODE -ne 0) { throw 'Latest preview upgrade verification failed.' }
       - name: Prepare checksums and installation guide
         shell: pwsh
         run: |
@@ -60,7 +73,7 @@ jobs:
           $petHash = (Get-FileHash -LiteralPath $petInstaller -Algorithm SHA256).Hash.ToLowerInvariant()
           "$petHash  $([IO.Path]::GetFileName($petInstaller))" | Set-Content dist/SHA256SUMS.txt -Encoding ascii
           Copy-Item docs/releases/INSTALL.txt dist/INSTALL.txt
-      - name: Create or update draft prerelease
+      - name: Create or update draft release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag }}
@@ -71,7 +84,7 @@ jobs:
           if ($LASTEXITCODE -eq 0) {
             if (-not ($petExisting | ConvertFrom-Json).isDraft) { throw 'Refusing to replace a published release.' }
           } else {
-            gh release create $env:RELEASE_TAG --verify-tag --draft --prerelease --title "pet-with-you $petVersion" --notes-file "docs/releases/$env:RELEASE_TAG.md"
+            gh release create $env:RELEASE_TAG --verify-tag --draft --title "pet-with-you $petVersion" --notes-file "docs/releases/$env:RELEASE_TAG.md"
             if ($LASTEXITCODE -ne 0) { throw 'Draft release creation failed.' }
           }
           gh release upload $env:RELEASE_TAG "dist/pet-with-you-$petVersion-x64-setup.exe" dist/SHA256SUMS.txt dist/INSTALL.txt --clobber

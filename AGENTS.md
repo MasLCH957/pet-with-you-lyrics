@@ -9,7 +9,7 @@ See docs/PROJECT_HISTORY.md for development context and settled decisions. Updat
 ## Runtime and privacy
 
 - Windows desktop application. Install with npm ci; Node.js >=22.12 is required.
-- Keep the legacy data directory and Startup shortcut compatible. project.cjs owns the data directory choice. settings-store.cjs owns settings.json and migration; secrets stay in credentials.local.json.
+- Use %APPDATA%/pet-with-you and pet-with-you.lnk. Keep lightweight one-time legacy migration; never copy runtime caches or remove the old rollback data automatically. project.cjs owns the data directory choice. settings-store.cjs owns settings.json and migration; secrets stay in credentials.local.json.
 - Client-start integration uses the optional Codex withu launcher: always open both apps, preserve the saved pet mode, offer creation once on first connection, allow a custom destination. The followClientStart switch is retired; do not restore a watcher, process auditing, or client patches. Check latest preferences before client-triggered exit.
 - Do not read or print live keys, auth.json, connection.json, private session contents, or the complete user config. Ask users to enter secrets through Settings.
 - Use npm test and npm run test:ui. The UI runner uses temporary data and mocked providers. Do not run model calls or alter the live Codex installation for tests.
@@ -25,7 +25,7 @@ See docs/PROJECT_HISTORY.md for development context and settled decisions. Updat
 
 ## Packaging and assets
 
-- Keep the preview suffix at three numeric components: alpha.7.1.1 -> alpha.7.1.2 -> alpha.7.1.3. Never append another dot-separated level for a small fix.
+- Use three-component semantic versions starting with 1.0.0. Do not publish or claim a release based only on a source version change.
 - Keep source and docs synchronized; defer installer rebuilding and installation until pre-upload preparation or an explicit request. Shortcut labels use pet-with-u; the project, executable and repository remain pet-with-you.
 - Launch paths must be derived from the checkout, environment or OS APIs, never a developer's username or drive.
 - Root launchers are public entry points. Keep root services, runtime/, ui/, scripts/, test/, docs/ responsibilities clear.

@@ -7,7 +7,7 @@ test('product rename preserves data and isolated tests override runtime selectio
   assert.equal(PRODUCT_NAME,'pet-with-you');
   const previous=process.env.PET_TEST_DATA_DIR,previousDev=process.env.PET_DEV_DATA_DIR;delete process.env.PET_TEST_DATA_DIR;delete process.env.PET_DEV_DATA_DIR;
   t.after(()=>{if(previous===undefined)delete process.env.PET_TEST_DATA_DIR;else process.env.PET_TEST_DATA_DIR=previous;if(previousDev===undefined)delete process.env.PET_DEV_DATA_DIR;else process.env.PET_DEV_DATA_DIR=previousDev;});
-  assert.equal(dataDirectory('fixture'),path.join('fixture','DSH Pet Companion'));
+  assert.equal(dataDirectory('fixture'),path.join('fixture','pet-with-you'));
   process.env.PET_DEV_DATA_DIR='development';assert.equal(dataDirectory('fixture'),'development');
   process.env.PET_TEST_DATA_DIR='isolated';assert.equal(dataDirectory('fixture'),'isolated');
 });

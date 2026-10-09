@@ -20,17 +20,37 @@ const write = (file, value) => fs.writeFileSync(file, JSON.stringify(value));
 const env = { ...process.env };
 for (const key of Object.keys(env)) if (/^(PET_|DSH_PET_)/.test(key) || ['ELECTRON_RUN_AS_NODE', 'OPENAI_API_KEY', 'CODEX_API_KEY'].includes(key)) delete env[key];
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
-let child, closed, mock;
-async function stop() { if (child) { child.kill(); await closed; child = null; } }
+let child, closed, mock, inspectorUrl;
+async function stop() {
+  if (!child) return;
+  if (child.exitCode === null && inspectorUrl) {
+    // A forced kill can discard Chromium's pending encryption-key write. Match tray Quit.
+    const socket = new WebSocket(inspectorUrl);
+    try {
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('Fixture quit inspector timeout')), 5000);
+        socket.onopen = () => socket.send(JSON.stringify({ id: 1, method: 'Runtime.evaluate', params: { expression: "setTimeout(() => process.mainModule.require('electron').app.quit(), 100)" } }));
+        socket.onmessage = event => { const result = JSON.parse(event.data); if (result.id === 1) { clearTimeout(timeout); result.error || result.result?.exceptionDetails ? reject(new Error('Fixture graceful quit failed')) : resolve(); } };
+        socket.onerror = () => { clearTimeout(timeout); reject(new Error('Fixture quit inspector unavailable')); };
+      });
+    } finally { socket.close(); }
+  }
+  const finished = await Promise.race([closed.then(() => true), pause(10000).then(() => false)]);
+  if (!finished) { child.kill(); await closed; child = null; throw new Error('Fixture pet did not quit gracefully.'); }
+  child = null;
+}
 async function start(dataDir) {
   const startupTarget = path.join(dataDir, 'startup-target.json');
   if (fs.existsSync(startupTarget)) fs.unlinkSync(startupTarget);
-  child = spawn(executable, ['--background'], { env, windowsHide: true, stdio: 'ignore' });
+  inspectorUrl = null;
+  child = spawn(executable, ['--inspect=127.0.0.1:0', '--background'], { env, windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] });
+  let stderr = '';
+  child.stderr.on('data', bytes => { stderr = (stderr + bytes).slice(-8192); inspectorUrl ||= stderr.match(/ws:\/\/127\.0\.0\.1:\d+\/[a-f0-9-]+/)?.[0]; });
   closed = once(child, 'close');
   for (let i = 0; i < 200; i++) {
     if (child.exitCode !== null) throw new Error('Fixture pet exited before starting its service.');
     // The HTTP listener precedes Electron ready; lifecycle sync writes this only after ready.
-    try { const endpoint = read(path.join(dataDir, 'connection.json')); if (endpoint.pid === child.pid && fs.existsSync(startupTarget)) return endpoint.base; } catch {}
+    try { const endpoint = read(path.join(dataDir, 'connection.json')); if (endpoint.pid === child.pid && inspectorUrl && fs.existsSync(startupTarget)) return endpoint.base; } catch {}
     await pause(100);
   }
   throw new Error('Fixture pet startup timed out.');
@@ -69,6 +89,7 @@ async function cleanup() {
     await call(base, '/quota/settings', { selected: 'proxy', proxy: { endpoint: 'https://quota.example.test/balance', credential: 'manual', header: 'Authorization', bearer: true, format: 'remaining', valuePath: 'data.balance', scale: 1, unit: 'CNY', key: 'fixture-quota-key' } });
     const profile = await fetch(base + '/api/profiles', { method: 'POST', body: JSON.stringify({ name: 'Upgrade fixture' }) }); assert.equal(profile.status, 200);
     await pause(800); await stop();
+    assert.ok(read(path.join(oldDir, 'Local State')).os_crypt?.encrypted_key, 'Old app must flush its encryption key before upgrade');
     const store = new (require('../settings-store.cjs').SettingsStore)(oldDir);
     store.set('positions', { fixture: { x: 320, feet: 640 } });
     store.set('petEntries', { custom: { pets: [{ id: 'fixture-custom', name: 'Custom fixture', display: 'none', size: 333 }] } });

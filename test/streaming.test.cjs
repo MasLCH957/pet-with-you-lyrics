@@ -60,3 +60,29 @@ test('desktop stream reader emits partial text but requires a final result',asyn
   const result=await read(new Response(body,header),text=>updates.push(text));assert.equal(result.text,'你好呀');assert.deepEqual(updates,['你好']);
   await assert.rejects(read(new Response('{"type":"text","text":"half"}\n',header),()=>{}),e=>e.name==='PetStreamError');
 });
+
+test('chat endpoint streams early body with the chosen speed, and saves only completed replies',async t=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'pet-chat-stream-'));const service=await startServer({dataDir:dir,defaultMode:'connected'});
+  t.after(()=>{service.close();fs.rmSync(dir,{recursive:true,force:true});});
+  await fetch(service.base+'/preferences',{method:'PUT',body:JSON.stringify({chatSourceChosen:true,gptFastReply:false})});
+  let finish;service.client.chat=async(_prompt,options)=>{assert.equal(options.fast,false);options.onText('提前正文');return new Promise(r=>finish=r);};
+  const response=await fetch(service.base+'/chat?stream=1',{method:'POST',body:JSON.stringify({text:'fixture'})});
+  const reader=response.body.getReader();assert.equal(JSON.parse(new TextDecoder().decode((await reader.read()).value)).text,'提前正文');
+  assert.deepEqual((await(await fetch(service.base+'/chat')).json()).messages,[]);
+  finish('完整正文');let body='';while(true){const r=await reader.read();if(r.done)break;body+=new TextDecoder().decode(r.value);}
+  const final=JSON.parse(body.trim());assert.equal(final.reply,'完整正文');assert.equal(final.ok,true);
+  assert.equal((await(await fetch(service.base+'/chat')).json()).messages.at(-1).content,'完整正文');
+});
+
+test('chat with image selection never streams raw partial JSON',async t=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'pet-chat-image-'));const service=await startServer({dataDir:dir,defaultMode:'connected'});
+  t.after(()=>{service.close();fs.rmSync(dir,{recursive:true,force:true});});
+  await fetch(service.base+'/preferences',{method:'PUT',body:JSON.stringify({chatSourceChosen:true})});
+  const config=(await(await fetch(service.base+'/config')).json()).main;config.chatImageEnabled=true;
+  for(const pet of config.pets)pet.chatImageEnabled=true;
+  await fetch(service.base+'/config',{method:'PUT',body:JSON.stringify(config)});
+  service.client.chat=async(_prompt,options)=>{assert.equal(options.onText,undefined);return '{"reply":"好呀","image":""}';};
+  const response=await fetch(service.base+'/chat?stream=1',{method:'POST',body:JSON.stringify({text:'fixture'})});
+  const records=(await response.text()).trim().split('\n').map(x=>JSON.parse(x));
+  assert.equal(records.length,1);assert.equal(records[0].type,'done');assert.equal(records[0].reply,'好呀');
+});

@@ -953,15 +953,16 @@ function mountContextMenu(opts) {
 
 //#endregion
 //#region src/shared/chat.ts
-const SEND_TIMEOUT_MS = 6e4;
-async function sendChat(baseUrl, text) {
-	const res = await fetch(baseUrl, {
+const SEND_TIMEOUT_MS = 18e4;
+async function sendChat(baseUrl, text, onText) {
+	const streaming=typeof onText==='function'&&!!window.PetWhisperStream;
+	const res = await fetch(baseUrl+(streaming?(baseUrl.includes('?')?'&':'?')+'stream=1':''), {
 		method: "POST",
 		headers: { "content-type": "application/json" },
 		body: JSON.stringify({ text }),
 		signal: AbortSignal.timeout(SEND_TIMEOUT_MS)
 	});
-	const raw = await res.json().catch(() => null);
+	const raw = streaming?await window.PetWhisperStream.read(res,onText):await res.json().catch(() => null);
 	if (!raw || typeof raw !== "object") throw new Error("dsh-pet: 对话响应非法");
 	const o = raw;
 	if (o.ok !== true) return {
@@ -995,7 +996,8 @@ const CHAT_CSS = [
 	"resize:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere}",
 	".dsh-pet-chat-input::placeholder{color:rgba(43,43,43,.45)}",
 	".dsh-pet-chat-input:disabled{opacity:.55}",
-	".dsh-pet-chat-err{color:#d94f3d;font-size:12px;padding:0 12px 8px;white-space:pre-wrap;overflow-wrap:anywhere}"
+	".dsh-pet-chat-err{color:#d94f3d;font-size:12px;padding:0 12px 8px;white-space:pre-wrap;overflow-wrap:anywhere}",
+	".dsh-pet-chat-progress{padding:8px 12px;white-space:pre-wrap;overflow-wrap:anywhere;user-select:text;max-height:40vh;overflow:auto;border-top:1px solid #dce6ed;color:#284957}"
 ].join("");
 /** 输入框宽度自适应参数：初始小宽 → 随文本增宽 → 封顶后折行增高 */
 const CHAT_MIN_W = 160;
@@ -1047,7 +1049,9 @@ function mountChatDialog(opts) {
 	const err = document.createElement("div");
 	err.className = "dsh-pet-chat-err";
 	err.style.display = "none";
+	const progress=document.createElement('div');progress.className='dsh-pet-chat-progress';progress.hidden=true;
 	root.appendChild(input);
+	root.appendChild(progress);
 	root.appendChild(err);
 	document.body.appendChild(root);
 	resizeInput();
@@ -1081,7 +1085,15 @@ function mountChatDialog(opts) {
 		if (!text) return;
 		sending = true;
 		input.disabled = true;
-		sendChat(withPet, text).then((state) => {
+		err.style.display='none';progress.hidden=false;progress.textContent='正在回复…';
+		sendChat(withPet, text,partial=>{
+			if(closed)return;
+			if(window.PetBubbleText)window.PetBubbleText.set(progress,partial,{reveal:true});else progress.textContent=partial;
+			root.style.width=Math.min(CHAT_MAX_W,c.w-8)+'px';
+			const rect=root.getBoundingClientRect();
+			root.style.left=Math.max(c.x+4,Math.min(rect.left,c.x+c.w-rect.width-4))+'px';
+			root.style.top=Math.max(c.y+4,Math.min(rect.top,c.y+c.h-rect.height-4))+'px';
+		}).then((state) => {
 			if (state.ok) {
 				close();
 				if (onReply) onReply(state.reply, state.image);
@@ -1090,6 +1102,7 @@ function mountChatDialog(opts) {
 				err.style.display = "block";
 			}
 		}).catch((e) => {
+			if(closed)return;
 			err.textContent = "对话异常：" + String(e && e.message ? e.message : e);
 			err.style.display = "block";
 		}).finally(() => {

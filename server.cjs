@@ -95,7 +95,7 @@ async function startServer({dataDir,hooksAdapter={inspect:inspectConnection,inst
       const useImage=isWhisper?found.conf.whisperImageEnabled:found.conf.chatImageEnabled;
       const chooseImage=useImage&&!isWhisper&&pool.length;
       const prompt=found.conf.whisperPrompt+'\n以下为聊天记录，仅作语境：\n'+JSON.stringify(history)+'\n用户消息：'+text+(isWhisper?whisperHistory.context(id):'')+(chooseImage?'\n请输出 JSON：{"reply":"回复","image":"表情名或空字符串"}。按对话语境从以下表情中选择：'+JSON.stringify(found.conf.memes):'');
-      const options={onText:onText?value=>{if(epoch===modeEpoch&&(!isWhisper||!whisperHistory.isPriorPrefix(id,value)))onText(value);}:undefined};
+      const options={fast:preferences.value.gptFastReply,onText:onText&&!chooseImage?value=>{if(epoch===modeEpoch&&(!isWhisper||!whisperHistory.isPriorPrefix(id,value)))onText(value);}:undefined};
       let reply=useApi()?await apiClient.chat(prompt,options):await client.chat(prompt,options),image;
       if(epoch!==modeEpoch)throw issue('mode-changed');
       if(isWhisper&&!whisperHistory.add(id,reply))return {ok:true,repeated:true,text:'',reply:'',ts:Date.now()};
@@ -125,9 +125,12 @@ async function startServer({dataDir,hooksAdapter={inspect:inspectConnection,inst
       if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Origin':origin||'null','Access-Control-Allow-Methods':'GET,POST,PUT,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type'});return res.end();}
       const route=decodeURIComponent(url.pathname.slice(prefix.length));const id=url.searchParams.get('pet')||flattenPetList(config)[0]?.id;
       operation=route.startsWith('/logs')?'logs':route==='/quota/context'?'quota-context':route==='/connection'||route==='/connect'?'connection-inspect':'settings';
-      if(route==='/logs')return json(req.method==='DELETE'?diagnostics.clear():diagnostics.summary());
+      if(route==='/logs'){
+        if(req.method==='DELETE'){client.lastChatTiming=null;return json(diagnostics.clear());}
+        return json({...diagnostics.summary(),...(client.lastChatTiming?{gptTiming:require('./diagnostics.cjs').codexFields(client.lastChatTiming)}:{})});
+      }
       if(route==='/logs/open'&&req.method==='POST'){fs.mkdirSync(diagnostics.dir,{recursive:true});await onLogsOpen(diagnostics.dir);return json({ok:true});}
-      if(route==='/logs/export'&&req.method==='POST')return json(await onLogsExport(diagnostics.exportText()));
+      if(route==='/logs/export'&&req.method==='POST')return json(await onLogsExport(diagnostics.exportText({gptTiming:client.lastChatTiming})));
       if(route==='/'||route==='/settings')return file(path.join(ROOT,'ui'),'index.html');
       if(route==='/settings-file'&&req.method==='GET')return json({name:'settings.json',file:settingsStore.file});
       if(route==='/settings-file/locate'&&req.method==='POST'){await onSettingsLocate(settingsStore.file);return json({ok:true});}
@@ -281,6 +284,17 @@ async function startServer({dataDir,hooksAdapter={inspect:inspectConnection,inst
         if(!chatReady())return json({ok:false,reason:'disabled',message:useApi()?'请先配置自有 API。':'请先在设置中选择聊天与碎碎念的默认服务。'},409);
         if(req.method==='GET')return json({ok:true,messages:memory[id]||[]});
         if(req.method!=='POST')return json({error:'Method not allowed'},405);
+        if(url.searchParams.get('stream')==='1'){
+          const input=await body();
+          res.writeHead(200,{'Content-Type':'application/x-ndjson; charset=utf-8','Cache-Control':'no-store','Access-Control-Allow-Origin':'null'});res.flushHeaders();
+          const send=value=>{if(!res.destroyed&&!res.writableEnded)res.write(JSON.stringify(value)+'\n');};
+          let last=0;
+          try{
+            const value=await chat(id,input.text,false,text=>{const now=Date.now();if(now-last>=40&&res.writableLength<1048576){last=now;send({type:'text',text});}});
+            send({type:'done',...value});
+          }catch(e){send({type:'done',ok:false,...report('chat-'+(useApi()?'api':'gpt'),e,useApi()?'operation-failed':'gpt-failed')});}
+          return res.end();
+        }
         try{return json(await chat(id,(await body()).text));}catch(e){return json({ok:false,reason:'generate-error',...report('chat-'+(useApi()?'api':'gpt'),e,useApi()?'operation-failed':'gpt-failed')});}
       }
       if(route==='/whisper/history')return json(whisperHistory.list(id));

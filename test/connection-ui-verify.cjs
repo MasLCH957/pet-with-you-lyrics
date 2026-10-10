@@ -33,6 +33,9 @@ module.exports = async function verify(settings) {
       checks.error=$('#connectionNotice').textContent.includes('fixture offline')&&!$('#connect').disabled&&$('#connectionStatus strong').textContent.includes('已收到 Hook')&&!$('#reviewHooks').hidden;
       showConnection({ready:true});
       checks.waiting=$('#connectionStatus strong').textContent.includes('等待事件');
+      showConnection({ready:true,monitor:{lastEvent:{at:Date.now(),event:'Stop'}}});
+      const connectionText=$('#connectionStatus').textContent;
+      checks.independent=connectionText.includes('本地任务状态已接通')&&connectionText.includes('Hooks 已信任')&&connectionText.includes('不代表授权失败')&&connectionText.includes('默认模型');
     }finally{api=originalApi;loadPreferences=originalLoad;}
     return checks;
   })()`);

@@ -209,6 +209,7 @@ class PetSprite {
   }
 
   dispose() {
+    cancelAnimationFrame(this.whisperFrame);cancelAnimationFrame(this.bubbleLayoutFrame);
     this.cancelVideoLoad?.();
     clearTimeout(this.errorNoticeTimer);
     if(this.explicitQuotaTimer)clearTimeout(this.explicitQuotaTimer);
@@ -1264,10 +1265,11 @@ class PetSprite {
     try{
       // A generation request must not be retried: it can create duplicate paid calls.
       const stream=!automatic&&window.petPreferences.whisperStreaming!==false;
-      const response=await fetch(WHISPER_URL+'/trigger?pet='+encodeURIComponent(this.pet.id)+(stream?'&stream=1':''),{signal:AbortSignal.any([this.ac.signal,AbortSignal.timeout(65000)])});
+      const response=await fetch(WHISPER_URL+'/trigger?pet='+encodeURIComponent(this.pet.id)+(stream?'&stream=1':''),{signal:AbortSignal.any([this.ac.signal,AbortSignal.timeout(180000)])});
       const state=await window.PetWhisperStream.read(response,text=>{
         if(this.ac.signal.aborted||request.dismissed||this.whisperRequest!==request)return;
-        request.text=text;this.renderBubble();
+        request.text=text;
+        if(!this.whisperFrame)this.whisperFrame=requestAnimationFrame(()=>{this.whisperFrame=null;if(!this.ac.signal.aborted)this.renderBubble();});
       });
       if(this.ac.signal.aborted||request.dismissed)return;
       this.whisperRequest=null;
@@ -1408,6 +1410,7 @@ class PetSprite {
   }
 
   renderBubble() {
+    cancelAnimationFrame(this.whisperFrame);this.whisperFrame=null;
     this.updateReplyTimer();this.updateQuotaTimer();
     const hasReply=!!(this.whisperOn&&this.whisperView&&!this.explicitQuota);
     const pending=!!(this.whisperRequest&&!this.whisperRequest.automatic&&!this.whisperRequest.dismissed&&!this.explicitQuota);
@@ -1419,7 +1422,9 @@ class PetSprite {
     const interactive=hasReply||pending||nativeActive||quotaVisible;
     this.bubble.classList.toggle('can-copy',interactive);this.bubble.classList.toggle('task-stack',nativeActive);
     this.bubble.classList.toggle('reply-stack',(hasReply||pending)&&!this.workOn&&!this.errorNotice);
-    requestAnimationFrame(()=>{
+    cancelAnimationFrame(this.bubbleLayoutFrame);
+    this.bubbleLayoutFrame=requestAnimationFrame(()=>{
+      this.bubbleLayoutFrame=null;if(this.ac.signal.aborted)return;
       this.bubble.style.translate='0px 0px';
       if(this.bubble.matches('.task-stack,.reply-stack,.quota-bubble')){
         const bounds=this.visibleClampRect(),r=this.bubble.getBoundingClientRect();
@@ -1460,16 +1465,16 @@ class PetSprite {
       window.__dshPetDebug.lastBubbleTitle=this.errorNotice.slice(0,60);return;
     }
     if (pending || (this.whisperOn && this.whisperView && !this.explicitQuota)) {
-      this.bubble.innerHTML = '';
-      const card=document.createElement('div');card.className='native-task-card reply-card';
-      // 配图（shared 生成的 <img> + 共用样式）：先看图再读话，符合"配图"的阅读顺序
-      if (whisperImg&&!pending) card.appendChild(whisperImg);
-      const line = document.createElement('div');
-      line.className = 'pet-bub-row';
-      line.classList.add('reply-content');
-      window.PetBubbleText.set(line,pending?(this.whisperRequest.text||'碎碎念中……'):this.whisperView[0]?.text??'');
-      line.setAttribute('aria-live','polite');card.appendChild(line);
-      this.appendReplyActions(false,card);this.bubble.append(card);
+      const imageKey=whisperImg&&!pending?whisperImg.src:'';
+      // Keep the card, close button and text nodes stable throughout streamed updates.
+      if(this.replyCard?.parentNode!==this.bubble||this.replyImageKey!==imageKey){
+        const card=document.createElement('div');card.className='native-task-card reply-card';
+        if(whisperImg&&!pending)card.append(whisperImg);
+        const line=document.createElement('div');line.className='pet-bub-row reply-content';
+        line.setAttribute('aria-live','polite');card.append(line);this.appendReplyActions(false,card);
+        this.bubble.replaceChildren(card);this.replyCard=card;this.replyLine=line;this.replyImageKey=imageKey;
+      }
+      window.PetBubbleText.set(this.replyLine,pending?(this.whisperRequest.text||'碎碎念中……'):this.whisperView[0]?.text??'',{reveal:pending&&!!this.whisperRequest.text});
       this.bubble.classList.add('is-on');
       window.__dshPetDebug.lastBubbleTitle = this.bubble.textContent.slice(0, 60);
       return;

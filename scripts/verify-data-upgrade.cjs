@@ -10,11 +10,16 @@ assert.ok(['seed', 'verify', 'cleanup'].includes(phase));
 // PowerShell can supply an 8.3 alias while Node returns the expanded temp path.
 assert.ok(fixture && fs.realpathSync.native(fixture).toLowerCase().startsWith(fs.realpathSync.native(os.tmpdir()).toLowerCase().replace(/[\\/]+$/, '') + path.sep));
 const stateFile = path.join(fixture, 'data-upgrade-fixture.json');
-const oldDir = path.join(process.env.APPDATA, 'DSH Pet Companion');
+const legacyDir = path.join(process.env.APPDATA, 'DSH Pet Companion');
 const newDir = path.join(process.env.APPDATA, 'pet-with-you');
+const stableSource = phase==='seed'
+  ? Number(require(path.join(path.dirname(executable),'resources','app','package.json')).version.split('.')[0])>=1
+  : fs.existsSync(stateFile)&&JSON.parse(fs.readFileSync(stateFile,'utf8')).stableSource===true;
+const oldDir = stableSource ? newDir : legacyDir;
 const marker = '.pet-upgrade-test';
 const startup = path.join(process.env.APPDATA, 'Microsoft/Windows/Start Menu/Programs/Startup');
-const oldLink = path.join(startup, 'DSH Pet Companion.lnk'), newLink = path.join(startup, 'pet-with-you.lnk');
+const newLink = path.join(startup, 'pet-with-you.lnk');
+const oldLink = stableSource ? newLink : path.join(startup, 'DSH Pet Companion.lnk');
 const read = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const write = (file, value) => fs.writeFileSync(file, JSON.stringify(value));
 const env = { ...process.env };
@@ -76,7 +81,7 @@ async function cleanup() {
     for (const item of [oldDir, newDir, oldLink, newLink, stateFile]) assert.ok(!fs.existsSync(item), 'Expected a clean runner: ' + path.basename(item));
     fs.mkdirSync(startup, { recursive: true });
     fs.mkdirSync(oldDir, { recursive: true }); fs.writeFileSync(path.join(oldDir, marker), fixture);
-    write(stateFile, { owned: true });
+    write(stateFile, { owned: true, stableSource });
     mock = http.createServer(); await new Promise(resolve => mock.listen(0, '127.0.0.1', resolve));
     const port = mock.address().port;
     const base = await start(oldDir);
@@ -100,10 +105,10 @@ async function cleanup() {
     write(path.join(oldDir, 'client-launcher.local.json'), { kind: 'file', file: process.execPath, name: 'Fixture client' });
     write(path.join(oldDir, 'runtime-path.json'), { executable: path.join(fixture, 'custom-codex', 'codex.exe') });
     assert.ok(fs.existsSync(oldLink));
-    write(stateFile, { port, settings: read(store.file), vault: read(store.vault) });
+    write(stateFile, { port, stableSource, settings: read(store.file), vault: read(store.vault) });
     console.log('PASS: old installed app saved encrypted fixture keys, profiles, size, font and Startup entry.');
   } else {
-    assert.ok(owned(oldDir)); assert.ok(!fs.existsSync(newDir));
+    assert.ok(owned(oldDir)); if(!stableSource)assert.ok(!fs.existsSync(newDir));
     const before = read(stateFile);
     let apiCalls = 0;
     mock = http.createServer(async (req, res) => {
@@ -125,7 +130,7 @@ async function cleanup() {
       const reply = await fetch(base + '/chat', { method: 'POST', body: JSON.stringify({ text: 'Fixture check' }), signal: AbortSignal.timeout(30000) }).then(r => r.json());
       assert.equal(reply.reply, 'Upgrade fixture reply', 'Migrated real Windows encryption must decrypt correctly: ' + (reply.message || 'unexpected reply'));
       for (let i = 0; i < 50 && !fs.existsSync(newLink); i++) await pause(100);
-      assert.ok(fs.existsSync(newLink)); assert.equal(fs.existsSync(oldLink), false);
+      assert.ok(fs.existsSync(newLink)); if(!stableSource)assert.equal(fs.existsSync(oldLink), false);
       const { psString } = require('../autostart.cjs');
       const args = execFileSync('powershell.exe', ['-NoProfile', '-Command', `. ${psString(path.resolve(__dirname, '../shell-shortcut.ps1'))};(New-PetShortcut ${psString(newLink)}).Arguments`], { windowsHide: true, encoding: 'utf8' });
       assert.ok(args.includes(newDir));
@@ -134,7 +139,7 @@ async function cleanup() {
     }
     assert.equal(apiCalls, 2);
     assert.deepEqual(read(path.join(newDir, 'runtime-path.json')), read(path.join(oldDir, 'runtime-path.json')));
-    assert.deepEqual(read(path.join(oldDir, 'settings.json')), before.settings, 'Old rollback settings remain untouched');
+    if(!stableSource)assert.deepEqual(read(path.join(oldDir, 'settings.json')), before.settings, 'Old rollback settings remain untouched');
     for (const dir of ['main-animation/webm', 'pet/custom-animation/webm', 'fonts']) assert.equal(fs.readFileSync(path.join(newDir, dir, 'fixture.bin'), 'utf8'), 'fixture-asset');
     assert.equal(fs.existsSync(path.join(newDir, '.migration-pending.json')), false);
     console.log('PASS: real installed upgrade migrates keys, custom assets, preferences and Startup; second launch retains them.');

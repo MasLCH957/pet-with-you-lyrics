@@ -19,7 +19,7 @@ module.exports=async({service,openSettings,getSettings})=>{
     const name=document.querySelector('#pets input[type=text]');name.value='Autosaved pet';name.dispatchEvent(new Event('change',{bubbles:true}));
     edit('apiProfileName','Autosave API');edit('apiBaseUrl','https://autosave.example.test/v1');edit('apiModel','test-model');edit('apiKey','autosave-private-fixture');
     edit('proxyProfileName','Autosave query');edit('proxyName','Fixture query');edit('proxyEndpoint','https://autosave.example.test/balance');edit('credential','manual');edit('proxyKey','query-private-fixture');edit('valuePath','data.balance');
-    edit('disableEventResponse',true);edit('notify',false);edit('chatSource','api');edit('quotaSource','proxy');
+    edit('disableEventResponse',true);edit('notify',false);edit('chatSource','api');edit('quotaSource','proxy');edit('gptFastReply',false);
     window.dispatchEvent(new Event('focus'));
   })()`);
   await sleep(100);
@@ -28,6 +28,7 @@ module.exports=async({service,openSettings,getSettings})=>{
   assert.equal(service.preferences.value.replySeconds,29);assert.equal(service.preferences.value.quotaSeconds,37);
   assert.equal(service.preferences.value.quotaAfterTurn,true);
   assert.equal(service.preferences.value.disableEventResponse,true);
+  assert.equal(service.preferences.value.gptFastReply,false);
   assert.equal(service.preferences.value.alwaysOnTop,false);assert.equal(service.preferences.value.autoWhisperProbability,73);
   assert.equal(service.preferences.value.followClientStart,undefined);assert.equal(service.preferences.value.chatSource,'api');
   const config=(await request('/config')).main;

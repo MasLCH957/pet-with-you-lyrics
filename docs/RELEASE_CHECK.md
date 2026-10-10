@@ -1,12 +1,15 @@
 # 发布前检查记录
 
-## 1.0.0 · 发布验收准备 · 2026-10-10
+## 1.0.0 · 正式发布 · 2026-10-10
 
 - 127 项测试、文档链接和源码/暂存/历史凭据模式检查通过。完整隔离界面及 1.0.0 打包后启动验证已通过，142 项原始素材不变。
 - 本轮补上真实安装程序覆盖升级后的个人配置保留测试，测试只允许在一次性的 GitHub Windows runner 执行。覆盖旧版加密保存模拟密钥，新版解密调用本地模拟 API、配置列表、字体、位置、自定义素材、Startup 入口和二次启动。alpha.7 与 alpha.7.1.6 都纳入升级验收。
 - 更新构建依赖 `http-cache-semantics` 至 4.3.0，修复高危缓存公告。高危门槛审计通过；剩余 `sprintf-js` 及其依赖链为中危构建工具问题，不随安装包分发，没有通过关闭安全检查或强制降级打包器处理。
-- 本机已生成安装 EXE 并完成打包应用验证；[候选云端验收](https://github.com/Refining-colors/pet-with-you/actions/runs/37966873181)已通过新安装、同版重装、两版跨版本升级与卸载测试；文案同步后重新构建最终资产，核验后才公开 Release。日常安装不作为破坏性卸载测试环境。
+- 发布源码 `5d78843`，[最终云端验收](https://github.com/Refining-colors/pet-with-you/actions/runs/38020627646)全部通过：新安装、同版重装、alpha.7 与 alpha.7.1.6 覆盖升级、自定义目录、权限、快捷方式、Hooks 保留及卸载。日常安装不作为破坏性卸载测试环境。
 - 真实加密验收拦截并修复：Electron Windows safeStorage 解密还依赖 `Local State` 的 `os_crypt.encrypted_key`。兼容处理只提取此 DPAPI 保护字段，不导入其他 Chromium 状态；新增临时目录中的真实 Electron 加密与解密回归测试已通过。此前只比对密钥文件的测试不能证明密钥可用，发布流程现覆盖实际本地模拟 API 请求。
+
+- [正式 Release](https://github.com/Refining-colors/pet-with-you/releases/tag/v1.0.0)包含 EXE、SHA256SUMS.txt 和 INSTALL.txt。完整下载验证：150,516,335 字节（143.54 MiB），SHA-256 为 `47c3c9cb2739f7a2ac6091abaa518f004929c457474b24dfcbb2517774495196`。相比 alpha.7.1.6 减少约 24.4 KiB，不宣称大幅缩小包体。
+- 全部 106 段动画、142 项原始资源保留；安装包无个人配置、密钥或第三方字体。日常安装未在本次发布中覆盖，保持独立。
 
 ## 0.1.0-alpha.7.1.6 公开发布 · 2026-09-30
 

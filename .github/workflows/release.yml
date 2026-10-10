@@ -52,7 +52,7 @@ jobs:
           if ($petOldHash -ne 'cab7dfe8e28941581f5502dadd98697d81a4964be474d1db9aa846a6670e8e09') { throw 'Previous installer checksum mismatch.' }
           powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-installer.ps1 -PreviousInstaller $petOldInstaller
           if ($LASTEXITCODE -ne 0) { throw 'Cross-version upgrade verification failed.' }
-      - name: Verify upgrade and data migration from latest preview
+      - name: Verify upgrade and saved settings from latest preview
         env:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
@@ -87,5 +87,7 @@ jobs:
             gh release create $env:RELEASE_TAG --verify-tag --draft --title "pet-with-you $petVersion" --notes-file "docs/releases/$env:RELEASE_TAG.md"
             if ($LASTEXITCODE -ne 0) { throw 'Draft release creation failed.' }
           }
+          gh release edit $env:RELEASE_TAG --title "pet-with-you $petVersion" --notes-file "docs/releases/$env:RELEASE_TAG.md"
+          if ($LASTEXITCODE -ne 0) { throw 'Draft release notes update failed.' }
           gh release upload $env:RELEASE_TAG "dist/pet-with-you-$petVersion-x64-setup.exe" dist/SHA256SUMS.txt dist/INSTALL.txt --clobber
           if ($LASTEXITCODE -ne 0) { throw 'Asset upload failed.' }

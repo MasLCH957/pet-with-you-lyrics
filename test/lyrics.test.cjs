@@ -326,3 +326,69 @@ test('media controls forward previous, next and toggle with rate limiting', asyn
   assert.deepEqual(source.actions, ['next', 'toggle']);
   service.close();
 });
+
+test('QQ Music supplies a fallback when LRCLIB has no matching lyrics', async (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'pet-lyrics-qq-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  class FakeMediaSource {
+    start(callback) {
+      this.emit = callback;
+    }
+    stop() {}
+  }
+  const source = new FakeMediaSource();
+  const calls = [];
+  const service = new LyricsService({
+    dataDir: directory,
+    mediaSource: source,
+    now: () => 1000,
+    fetchImpl: async (url) => {
+      const parsed = new URL(url);
+      calls.push(parsed.hostname);
+      if (parsed.hostname === 'lrclib.net') {
+        if (parsed.pathname.endsWith('/api/get')) return { ok: false, status: 404, json: async () => ({}) };
+        return { ok: true, status: 200, json: async () => [] };
+      }
+      if (parsed.pathname.includes('client_search_cp')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            data: {
+              song: {
+                list: [{
+                  songmid: '002sjslo1VzTgG',
+                  songname: '记念',
+                  singer: [{ name: 'RAiNBOW计划' }, { name: '雷雨心' }],
+                  interval: 203,
+                }],
+              },
+            },
+          }),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ lyric: '[00:01.00]时间一转眼就过去了三年\n[00:04.00]一切在我心里开的好皎洁' }),
+      };
+    },
+  });
+  service.configure({ enabled: true, autoFetch: true });
+  await source.emit({
+    media: {
+      title: '记念',
+      artist: 'RAiNBOW计划/雷雨心',
+      album: '橙',
+      playbackStatus: 'Playing',
+      positionMs: 2000,
+      endMs: 203000,
+      lastUpdatedAt: 1000,
+    },
+  });
+  const state = service.status();
+  assert.equal(state.lyrics.source, 'qqmusic');
+  assert.equal(state.current.text, '时间一转眼就过去了三年');
+  assert.ok(calls.includes('c.y.qq.com'));
+  service.close();
+});

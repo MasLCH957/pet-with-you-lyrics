@@ -12,6 +12,17 @@ function cleanText(value, max = 300) {
   return typeof value === 'string' ? value.replace(/\0/g, '').trim().slice(0, max) : '';
 }
 
+function decodeHtmlEntities(value) {
+  return String(value || '')
+    .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCodePoint(parseInt(code, 16)))
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;|&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+}
+
 function normalizeToken(value) {
   return cleanText(value, 300)
     .normalize('NFKC')
@@ -411,8 +422,8 @@ class LyricsService {
       this.mediaId = '';
       this.lyrics = null;
       this.loadingKey = '';
-    this.lastFetchDuration = 0;
-    this.lastFetchAt = 0;
+      this.lastFetchDuration = 0;
+      this.lastFetchAt = 0;
       this.error = cleanText(value?.error || '');
       return;
     }
@@ -449,7 +460,7 @@ class LyricsService {
     if (!entry || !Array.isArray(entry.lines) || !entry.lines.length) return null;
     return {
       kind: entry.kind === 'plain' ? 'plain' : 'synced',
-      source: entry.source === 'local' ? 'local' : 'lrclib',
+      source: ['local', 'lrclib', 'qqmusic'].includes(entry.source) ? entry.source : 'lrclib',
       lines: entry.lines,
       fetchedAt: entry.fetchedAt || 0,
     };
@@ -482,25 +493,102 @@ class LyricsService {
 
   async lookupOnline(media) {
     if (typeof this.fetchImpl !== 'function') throw new Error('fetch unavailable');
+    let failed = false;
+    let lrclib = null;
+    try {
+      lrclib = await this.lookupLrclib(media);
+    } catch {
+      failed = true;
+    }
+    if (lrclib?.lines?.length || lrclib?.instrumental) return lrclib;
+    try {
+      const qqmusic = await this.lookupQQMusic(media);
+      if (qqmusic?.lines?.length) return qqmusic;
+    } catch {
+      failed = true;
+    }
+    if (failed) throw new Error('lyrics services unavailable');
+    return lrclib || { kind: 'missing', source: 'lrclib', lines: [], instrumental: false };
+  }
+
+  async lookupLrclib(media) {
     const headers = { Accept: 'application/json', 'User-Agent': USER_AGENT };
-    const signal = typeof AbortSignal?.timeout === 'function' ? AbortSignal.timeout(7000) : undefined;
+    const signal = () => typeof AbortSignal?.timeout === 'function' ? AbortSignal.timeout(7000) : undefined;
     const duration = media.endMs > 0 ? (media.endMs - media.startMs) / 1000 : '';
     const params = new URLSearchParams({ track_name: media.title, artist_name: media.artist });
     if (media.album) params.set('album_name', media.album);
     if (Number.isFinite(duration) && duration > 0) params.set('duration', String(Math.round(duration)));
-    const exact = await this.fetchImpl('https://lrclib.net/api/get?' + params, { headers, signal });
+    const exact = await this.fetchImpl('https://lrclib.net/api/get?' + params, { headers, signal: signal() });
     let record = null;
     if (exact.ok) record = await exact.json();
     else if (![400, 404].includes(exact.status)) throw new Error('lyrics lookup failed');
     if (!record) {
       const searchParams = new URLSearchParams({ track_name: media.title });
       if (media.artist) searchParams.set('artist_name', media.artist);
-      const response = await this.fetchImpl('https://lrclib.net/api/search?' + searchParams, { headers, signal });
+      const response = await this.fetchImpl('https://lrclib.net/api/search?' + searchParams, { headers, signal: signal() });
       if (!response.ok) throw new Error('lyrics search failed');
       const values = await response.json();
       record = this.pickCandidate(Array.isArray(values) ? values : [], media);
     }
     return this.recordToLyrics(record, media);
+  }
+
+  async lookupQQMusic(media) {
+    const headers = {
+      Accept: 'application/json',
+      Referer: 'https://y.qq.com/',
+      'User-Agent': 'Mozilla/5.0',
+    };
+    const signal = typeof AbortSignal?.timeout === 'function' ? AbortSignal.timeout(7000) : undefined;
+    const search = new URLSearchParams({
+      p: '1',
+      n: '10',
+      w: [media.title, media.artist].filter(Boolean).join(' '),
+      format: 'json',
+    });
+    const response = await this.fetchImpl('https://c.y.qq.com/soso/fcgi-bin/client_search_cp?' + search, { headers, signal });
+    if (!response.ok) throw new Error('QQ Music search failed');
+    const data = await response.json();
+    const candidate = this.pickQQCandidate(data?.data?.song?.list, media);
+    if (!candidate?.songmid) return { kind: 'missing', source: 'qqmusic', lines: [], instrumental: false };
+    const lyricParams = new URLSearchParams({ songmid: candidate.songmid, format: 'json', nobase64: '1' });
+    const lyricResponse = await this.fetchImpl('https://c.y.qq.com/lyric/fcgi-bin/fcg_query_lyric_new.fcg?' + lyricParams, { headers, signal });
+    if (!lyricResponse.ok) throw new Error('QQ Music lyric failed');
+    const text = await lyricResponse.text();
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+    const payload = JSON.parse(start >= 0 && end > start ? text.slice(start, end + 1) : text);
+    const lyrics = decodeHtmlEntities(payload.lyric || '');
+    const parsed = parseLrc(lyrics);
+    const lines = parsed.lines.length
+      ? parsed.lines
+      : plainToTimedLines(lyrics, media.endMs || Number(candidate.interval) * 1000);
+    return {
+      kind: parsed.lines.length ? 'synced' : lines.length ? 'plain' : 'missing',
+      source: 'qqmusic',
+      lines,
+      instrumental: false,
+    };
+  }
+
+  pickQQCandidate(values, media) {
+    if (!Array.isArray(values)) return null;
+    const title = normalizeToken(media.title);
+    const artists = media.artist.split(/[\/&;,、]/).map(normalizeToken).filter(Boolean);
+    const expected = media.endMs > media.startMs ? (media.endMs - media.startMs) / 1000 : 0;
+    return values
+      .filter((value) => value && typeof value === 'object' && /^[A-Za-z0-9]{10,20}$/.test(value.songmid || ''))
+      .map((value) => {
+        const candidateTitle = normalizeToken(decodeHtmlEntities(value.songname));
+        const candidateArtists = (Array.isArray(value.singer) ? value.singer : []).map((singer) => normalizeToken(decodeHtmlEntities(singer?.name)));
+        let score = candidateTitle === title ? 12 : candidateTitle.includes(title) ? 5 : 0;
+        if (artists.some((artist) => candidateArtists.some((candidate) => candidate === artist || candidate.includes(artist) || artist.includes(candidate)))) score += 8;
+        const candidateDuration = Number(value.interval);
+        if (expected && Number.isFinite(candidateDuration)) score -= Math.min(5, Math.abs(candidateDuration - expected) / 10);
+        return { value, score };
+      })
+      .filter((candidate) => candidate.score >= 8)
+      .sort((a, b) => b.score - a.score)[0]?.value || null;
   }
 
   pickCandidate(values, media) {
@@ -642,6 +730,7 @@ module.exports = {
   LyricsService,
   WindowsMediaSource,
   controlWindowsMedia,
+  decodeHtmlEntities,
   lineAt,
   mediaKey,
   normalizeMedia,

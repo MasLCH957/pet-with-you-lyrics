@@ -29,7 +29,7 @@
 ## 当前实现
 
 - 使用 `powershell.exe` 和 Windows `GlobalSystemMediaTransportControlsSessionManager` 读取系统媒体会话。
-- 通过 [LRCLIB](https://lrclib.net/) 按歌曲名、歌手、专辑和时长匹配在线歌词。
+- 优先通过 [LRCLIB](https://lrclib.net/) 匹配在线歌词；未收录时自动尝试 QQ 音乐歌词作为后备。
 - 支持标准 LRC 时间戳、多个时间戳、小数秒、元数据标签和同步歌词。
 - 没有同步歌词时，将纯文本歌词按歌曲时长生成估算时间轴。
 - 本地 `.lrc` 会按当前歌曲保存到用户数据目录，并在再次播放时优先使用。
@@ -128,7 +128,7 @@ node --test test/lyrics.test.cjs
 - 只能读取播放器主动提供给 Windows 系统媒体会话的信息。拒绝系统集成或使用独占音频通道的应用可能无法识别。
 - LRCLIB 的歌词覆盖率不是 100%；未收录歌曲需要导入本地 LRC。
 - 系统媒体会话偶尔只提供较粗的时间轴更新。需要更精确对齐时，可使用设置中的同步微调。
-- 当前在线来源固定为 LRCLIB。后续可增加可插拔歌词源，但不应把登录凭据写入源码或日志。
+- 在线来源为 LRCLIB 与 QQ 音乐后备查询；两者都未收录时仍需导入本地 LRC。后续可继续增加可插拔歌词源，但不应把登录凭据写入源码或日志。
 - 当前功能面向 Windows；macOS 的 MediaRemote、Linux 的 MPRIS 尚未实现。
 
 ## 后续工作

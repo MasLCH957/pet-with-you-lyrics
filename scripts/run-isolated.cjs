@@ -1,12 +1,13 @@
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 
 const mode = process.argv[2];
 if (!['test', 'demo'].includes(mode)) throw new Error('Expected test or demo');
 const root = path.resolve(__dirname, '..');
-const data = fs.mkdtempSync(path.join(os.tmpdir(), 'pet-with-you-'));
+const tempRoot = path.join(root, '.work', 'tmp');
+fs.mkdirSync(tempRoot, { recursive: true });
+const data = fs.mkdtempSync(path.join(tempRoot, 'pet-with-you-'));
 const env = { ...process.env, PET_TEST_DATA_DIR: data, CODEX_HOME: path.join(data, 'codex-home') };
 fs.mkdirSync(env.CODEX_HOME, { recursive: true });
 delete env.PET_DEV_MODE;

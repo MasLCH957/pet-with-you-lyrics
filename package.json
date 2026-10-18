@@ -6,14 +6,14 @@
   "scripts": {
     "start": "node scripts/dev.cjs",
     "dev": "node scripts/dev.cjs",
-    "test": "node --test test/*.test.cjs",
+    "test": "node scripts/run-node-tests.cjs test/*.test.cjs",
     "doctor": "node scripts/doctor.cjs",
     "test:ui": "node scripts/run-isolated.cjs test",
     "media:record": "node scripts/run-isolated.cjs demo",
     "media:animations": "node scripts/export-animations.cjs",
     "check:docs": "node scripts/check-docs.cjs",
-    "dist:win": "electron-builder --config electron-builder.cjs --win nsis --x64 --publish never",
-    "pack:win": "electron-builder --config electron-builder.cjs --win --x64 --dir --publish never",
+    "dist:win": "node scripts/run-electron-builder.cjs --config electron-builder.cjs --win nsis --x64 --publish never",
+    "pack:win": "node scripts/run-electron-builder.cjs --config electron-builder.cjs --win --x64 --dir --publish never",
     "audit:source": "node scripts/audit-source.cjs",
     "media:catalog": "node scripts/build-animation-catalog.cjs"
   },

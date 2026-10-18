@@ -1,3 +1,12 @@
+# 最高优先级 · 项目工作根目录
+
+- 本仓库的唯一规范路径是 `D:\AI\_Workspace\Codex`；Git 根目录、工作目录和项目库根目录都必须是这一层。
+- 本项目产生的所有文件必须留在此根目录内，包括源码、依赖、构建包、测试截图、日志、缓存、临时文件、下载、备份、导出和恢复资料。
+- 临时与可清理产物统一放在 `.work/`：缓存放 `.work/cache/`，备份放 `.work/backups/`，临时文件放 `.work/tmp/`，归档放 `.work/archive/`。
+- 安装包使用现有 `dist/`，测试与界面截图使用 `qa-output/`，录制输出使用 `media-output/`；这些目录仍位于本仓库根目录。
+- 不得为了图方便把新产物写到 `C:`、`D:\AI_Workspace`、用户桌面或其它仓库。只有用户明确指定或系统/工具强制固定路径时才允许例外，并且必须在回复中说明。
+- 本规则是项目级最高路径规则；设备安全红线仍高于本规则。
+
 # Working on pet-with-you
 
 This checkout is the canonical development source. Keep the sibling daily-use installation and media workspace independent. Use Dev-Pet.cmd / npm start for manual preview; never run the production launcher as a routine test. See docs/WORKSPACE.md.
@@ -29,7 +38,7 @@ See docs/PROJECT_HISTORY.md for development context and settled decisions. Updat
 - Keep source and docs synchronized; defer installer rebuilding and installation until pre-upload preparation or an explicit request. Shortcut labels use pet-with-u; the project, executable and repository remain pet-with-you.
 - Launch paths must be derived from the checkout, environment or OS APIs, never a developer's username or drive.
 - Root launchers are public entry points. Keep root services, runtime/, ui/, scripts/, test/, docs/ responsibilities clear.
-- Generated files go to qa-output/ or media-output/. Neither belongs in source releases except explicitly selected safe docs images.
+- Generated files stay inside this repository. Use `.work/` for non-source outputs, `qa-output/` for test screenshots, and `media-output/` for recordings. Only explicitly selected safe docs images belong in source releases.
 - Keep upstream copyright/license and attribution. Original character assets remain noncommercial; extracting or recording them does not make them original.
 - The maintainer is Refining-colors and the repository is https://github.com/Refining-colors/pet-with-you. Project code uses MIT; keep LICENSE.upstream and do not claim character assets or fonts are unrestricted MIT.
 - Update user documentation and meaningful regression tests for behavior changes. Use npm run check:docs for local file links.

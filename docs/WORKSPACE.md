@@ -1,5 +1,7 @@
 # 源码工作区与 Git 入门
 
+当前唯一规范工作根为 **`D:\AI\_Workspace\Codex`**。源码、依赖、构建包、测试截图、缓存、临时文件、下载和备份都必须位于该目录内。非源码产物统一放入 Git 忽略的 `.work/`、`qa-output/`、`media-output/` 或 `dist/`；不得把新文件写到旧的 `D:\AI_Workspace` 或其他工作目录。
+
 ## 三类内容分开放
 
 `pet-with-you` 是用于开发、版本管理及准备上传 GitHub 的源码目录。维护者之前使用的 `dsh-pet-companion` 可暂时继续用于日常运行和已有媒体工作；后续改代码统一在新仓库中完成，避免两边各改一份。其他用户只需自己的一个源码目录，不需要照着创建旧目录。
@@ -11,6 +13,8 @@
 | 开发预览的设置与独立 Codex 目录 | `.local/` | 否 |
 | 日常密钥、位置、个人字体、聊天记录 | Windows 用户数据目录 | 否 |
 | 安装的依赖、下载缓存 | `node_modules/`、`.npm-cache/` | 否 |
+| Electron、Electron Builder 缓存与非源码临时文件 | `.work/cache/`、`.work/tmp/` | 否 |
+| 项目备份与历史归档 | `.work/backups/`、`.work/archive/` | 否 |
 | 录屏、参考视频、临时动画、测试截图 | `media-output/`、`qa-output/` | 否 |
 | 安装包与临时发布文件 | `dist/`、`release/` | 否，成品通过 Releases 单独发布 |
 

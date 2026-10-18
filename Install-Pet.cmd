@@ -1,5 +1,9 @@
 @echo off
 cd /d "%~dp0"
+set "npm_config_cache=%~dp0.npm-cache"
+set "electron_config_cache=%~dp0.work\cache\electron"
+set "ELECTRON_BUILDER_CACHE=%~dp0.work\cache\electron-builder"
+if not exist "%~dp0.work\cache" mkdir "%~dp0.work\cache"
 where node >nul 2>nul
 if errorlevel 1 (
   echo Please install Node.js 22.12 or later, then run this file again.

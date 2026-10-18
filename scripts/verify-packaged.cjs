@@ -1,11 +1,13 @@
-const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
+const fs = require('node:fs'), path = require('node:path');
 const assert = require('node:assert/strict');
 const { spawn } = require('node:child_process');
 const { once } = require('node:events');
 const http = require('node:http');
 const executable = path.resolve(process.argv[2] || 'dist/win-unpacked/pet-with-you.exe');
 const root = path.join(path.dirname(executable), 'resources', 'app');
-const data = fs.mkdtempSync(path.join(os.tmpdir(), 'pet-package-check-'));
+const tempRoot = path.join(__dirname, '..', '.work', 'tmp');
+fs.mkdirSync(tempRoot, { recursive: true });
+const data = fs.mkdtempSync(path.join(tempRoot, 'pet-package-check-'));
 const env = { ...process.env };
 for (const key of Object.keys(env)) if (/^(PET_|DSH_PET_)/.test(key) || ['ELECTRON_RUN_AS_NODE', 'OPENAI_API_KEY', 'CODEX_API_KEY'].includes(key)) delete env[key];
 Object.assign(env, { PET_TEST_DATA_DIR: data, CODEX_HOME: path.join(data, 'codex-home'), PATH: path.join(process.env.WINDIR, 'System32') + ';' + path.join(process.env.WINDIR, 'System32/WindowsPowerShell/v1.0') });

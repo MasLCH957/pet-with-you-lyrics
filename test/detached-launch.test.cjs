@@ -3,7 +3,7 @@ const fs=require('node:fs'),path=require('node:path'),os=require('node:os');
 const {execFileSync}=require('node:child_process');
 test('shell-launched process survives destruction of its initiating Windows job',{skip:process.platform!=='win32',timeout:25000},t=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),"pet detached ' job-"));
-  t.after(()=>fs.rmSync(dir,{recursive:true,force:true,maxRetries:5,retryDelay:100}));
+  t.after(()=>fs.rmSync(dir,{recursive:true,force:true,maxRetries:20,retryDelay:200}));
   const signal=path.join(dir,'ready'),survived=path.join(dir,'survived'),worker=path.join(dir,'worker.ps1'),parent=path.join(dir,'parent.cjs');
   const literal=value=>"'"+value.replaceAll("'","''")+"'";
   fs.writeFileSync(worker,'Start-Sleep -Seconds 3\n[IO.File]::WriteAllText('+literal(survived)+",'alive')\n");

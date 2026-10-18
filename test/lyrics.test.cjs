@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { LyricsService, lineAt, parseLrc, plainToTimedLines } = require('../lyrics.cjs');
+const { LyricsService, lineAt, parseLrc, plainToTimedLines, toSimplifiedChinese } = require('../lyrics.cjs');
 
 test('LRC parser handles metadata, fractions, offset and multiple timestamps', () => {
   const parsed = parseLrc([
@@ -390,5 +390,29 @@ test('QQ Music supplies a fallback when LRCLIB has no matching lyrics', async (t
   assert.equal(state.lyrics.source, 'qqmusic');
   assert.equal(state.current.text, '时间一转眼就过去了三年');
   assert.ok(calls.includes('c.y.qq.com'));
+  service.close();
+});
+
+test('lyrics can be converted to Simplified Chinese and keep an original mode', async (t) => {
+  assert.equal(toSimplifiedChinese('抹去我們過去的放棄的所有 交集'), '抹去我们过去的放弃的所有 交集');
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'pet-lyrics-simplified-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  class FakeMediaSource {
+    start(callback) {
+      this.emit = callback;
+    }
+    stop() {}
+  }
+  const source = new FakeMediaSource();
+  const service = new LyricsService({ dataDir: directory, mediaSource: source, now: () => 1000 });
+  service.configure({ enabled: true, autoFetch: false });
+  await source.emit({
+    media: { title: '简体转换', artist: '歌手', playbackStatus: 'Paused', positionMs: 500, endMs: 20000 },
+  });
+  const file = path.join(directory, 'traditional.lrc');
+  fs.writeFileSync(file, '[00:00.00]我們過去的放棄的所有 交集', 'utf8');
+  await service.useLocalFile(file);
+  assert.equal(service.status().current.text, '我们过去的放弃的所有 交集');
+  assert.equal(service.status({ simplifyChinese: false }).current.text, '我們過去的放棄的所有 交集');
   service.close();
 });

@@ -25,17 +25,17 @@ module.exports = async function verifyLyrics({ service, pet, directory }) {
     },
   });
   const lrc = path.join(path.dirname(service.paths.settings.file), 'lyrics-fixture.lrc');
-  fs.writeFileSync(lrc, '[00:01.00]第一句测试歌词\n[00:03.00]第二句测试歌词\n[00:06.00]第三句测试歌词', 'utf8');
+  fs.writeFileSync(lrc, '[00:01.00]第一句測試歌詞\n[00:03.00]第二句測試歌詞\n[00:06.00]第三句測試歌詞', 'utf8');
   await service.lyrics.useLocalFile(lrc);
 
   for (let index = 0; index < 20; index++) {
     const ready = await pet.webContents.executeJavaScript(
-      `document.querySelector('.pet-lyrics')?.classList.contains('is-on') && document.querySelector('.pet-lyrics-current')?.textContent.includes('第二句')`,
+      `document.querySelector('.pet-lyrics')?.classList.contains('is-on') && document.querySelector('.pet-lyrics-current')?.textContent.includes('第二句测试')`,
     );
     if (ready) break;
     await sleep(100);
   }
-  const state = await pet.webContents.executeJavaScript(`(()=>{const card=document.querySelector('.pet-lyrics'),buttons=[...document.querySelectorAll('.pet-lyrics-control')];return {visible:card.classList.contains('is-on'),title:document.querySelector('.pet-lyrics-title').textContent,current:document.querySelector('.pet-lyrics-current').textContent,next:document.querySelector('.pet-lyrics-next').textContent,nonInteractive:getComputedStyle(card).pointerEvents==='none',controls:buttons.length,controlsInteractive:buttons.every(button=>getComputedStyle(button).pointerEvents==='auto'),controlRect:!!sprites[0].lyricsControlRect};})()`);
+  const state = await pet.webContents.executeJavaScript(`(()=>{const card=document.querySelector('.pet-lyrics'),buttons=[...document.querySelectorAll('.pet-lyrics-control')];return {visible:card.classList.contains('is-on'),title:document.querySelector('.pet-lyrics-title').textContent,current:document.querySelector('.pet-lyrics-current').textContent,next:document.querySelector('.pet-lyrics-next').textContent,nonInteractive:getComputedStyle(card).pointerEvents==='none',controls:buttons.length,controlsInteractive:buttons.every(button=>getComputedStyle(button).pointerEvents==='auto'),controlRect:!!sprites[0].lyricsControlRect,playWidth:Math.round(document.querySelector('.is-play-toggle').getBoundingClientRect().width)};})()`);
   assert.deepEqual(state, {
     visible: true,
     title: '歌词界面测试 · pet-with-you',
@@ -45,6 +45,7 @@ module.exports = async function verifyLyrics({ service, pet, directory }) {
     controls: 3,
     controlsInteractive: true,
     controlRect: true,
+    playWidth: 34,
   });
   const point = await pet.webContents.executeJavaScript(`(()=>{const r=document.querySelector('[aria-label="下一首"]').getBoundingClientRect(),x=Math.round(r.left+r.width/2),y=Math.round(r.top+r.height/2);return {x:Math.round(x*CONFIG.scale),y:Math.round(y*CONFIG.scale),clientX:x,clientY:y};})()`);
   pet.focus();

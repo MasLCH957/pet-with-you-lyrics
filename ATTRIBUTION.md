@@ -19,6 +19,10 @@ pet-with-you 是在 [PC2005-cloud/dsh-pet](https://github.com/PC2005-cloud/dsh-p
 
 本项目新增代码同样采用 MIT 许可，正文见 [LICENSE](LICENSE)，版权归 Refining-colors；沿用代码继续保留上游版权声明。MIT 的代码许可不改变角色、动画及字体的素材许可。
 
+## 简体中文歌词转换
+
+`vendor/opencc-js/` 内置 OpenCC JS 1.4.2 的繁体中文到简体中文转换构建及许可文件。OpenCC JS 采用 MIT 与 Apache-2.0 许可，字典来源与第三方版权信息见该目录内的 `LICENSE`、`Apache-2.0.txt` 和 `THIRD_PARTY_LICENSES.md`。该组件仅用于将显示中的歌词转换为简体中文，不改变原始歌词缓存。
+
 ## 素材与二创约定
 
 截至 2026-09-27，上游 [README 的许可说明](https://github.com/PC2005-cloud/dsh-pet#许可) 写明：

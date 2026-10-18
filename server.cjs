@@ -190,7 +190,7 @@ async function startServer({dataDir,hooksAdapter={inspect:inspectConnection,inst
       if(route==='/appearance/import'&&req.method==='POST')return json(appearance.importFile(await onFontImport(),(await body()).target));
       if(route==='/tray/show'&&req.method==='POST'){onTray(true);return json({ok:true});}
       if(route==='/health')return json({ok:true,animations:fs.readdirSync(path.join(ROOT,'assets/webm')).length,lastHook,pendingChat:[...pendingChat],work:tasks.snapshot(),monitor:monitor.status(),mode:preferences.value.mode,apiConfigured:apiSettings.publicValue().configured});
-      if(route==='/lyrics/status'&&req.method==='GET')return json(lyrics.status({offsetMs:preferences.value.lyricsOffsetMs}));
+      if(route==='/lyrics/status'&&req.method==='GET')return json(lyrics.status({offsetMs:preferences.value.lyricsOffsetMs,simplifyChinese:preferences.value.lyricsSimplifiedChinese}));
       if(route==='/lyrics/control'&&req.method==='POST'){
         const action=(await body()).action;
         if(!['previous','next','toggle'].includes(action))return json({ok:false,message:'不支持的媒体控制操作'},400);

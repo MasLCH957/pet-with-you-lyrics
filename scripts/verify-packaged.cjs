@@ -34,7 +34,7 @@ async function run(program, args, options = {}, input) {
     assert.ok(connection, 'packaged app starts its isolated service');
     const health = await fetch(connection.base + '/health').then(r => r.json());
     assert.equal(health.mode, 'pet'); assert.equal(health.apiConfigured, false); assert.equal(health.animations, 106);
-    for (const file of ['lyrics.cjs','lyrics-media.ps1','lyrics-control.ps1','runtime/lyrics.js','runtime/lyrics.css','ui/lyrics.js']) assert.ok(fs.existsSync(path.join(root,file)),'packaged lyrics runtime includes '+file);
+    for (const file of ['lyrics.cjs','lyrics-media.ps1','lyrics-control.ps1','runtime/lyrics.js','runtime/lyrics.css','ui/lyrics.js','vendor/opencc-js/t2cn.js']) assert.ok(fs.existsSync(path.join(root,file)),'packaged lyrics runtime includes '+file);
     const lyricsStatus = await fetch(connection.base + '/lyrics/status').then(r => r.json());
     assert.equal(lyricsStatus.enabled, true, 'packaged lyrics display is enabled by default');
     const invalidControl = await fetch(connection.base + '/lyrics/control', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'seek'})});

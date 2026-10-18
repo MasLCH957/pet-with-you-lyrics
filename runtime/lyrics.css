@@ -80,9 +80,15 @@
 }
 
 .pet-lyrics-control.is-play-toggle {
-  width: 42px;
-  border-radius: 999px;
+  width: 34px;
+  height: 24px;
+  border-radius: 12px;
   background: #25e39a;
+}
+
+.pet-lyrics-control.is-play-toggle svg {
+  width: 14px;
+  height: 14px;
 }
 
 .pet-lyrics-play-icon {

@@ -29,6 +29,7 @@ module.exports=async function verify({service,openSettings,getSettings,largeTray
     assert.equal(await settings.webContents.executeJavaScript(`document.querySelector('#followClientStart')===null`),true);
     assert.equal(await settings.webContents.executeJavaScript(`!!document.querySelector('#lyricsSection')`),true);
     assert.equal(await settings.webContents.executeJavaScript(`document.querySelector('#lyricsEnabled').checked`),true);
+    assert.equal(await settings.webContents.executeJavaScript(`document.querySelector('#lyricsSimplifiedChinese').checked`),true);
     assert.equal(await pet().webContents.executeJavaScript(`!!document.querySelector('.pet-lyrics')`),true);
     assert.equal((await request('/lyrics/status')).enabled,true);
     await settings.webContents.executeJavaScript(`document.querySelector('#lyricsOffsetMs').value='250';document.querySelector('#lyricsOffsetMs').dispatchEvent(new Event('input',{bubbles:true}));window.PetSettingsAutosave.flush()`);

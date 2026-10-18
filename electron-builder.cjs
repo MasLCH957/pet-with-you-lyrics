@@ -10,7 +10,7 @@ module.exports = {
   asar: false,
   compression: 'maximum',
   files: [
-    ...runtimeFiles, 'assets/**/*', 'runtime/**/*', 'ui/**/*', 'README.md', 'SECURITY.md', 'CHANGELOG.md', 'docs/**/*',
+    ...runtimeFiles, 'assets/**/*', 'runtime/**/*', 'ui/**/*', 'vendor/**/*', 'README.md', 'SECURITY.md', 'CHANGELOG.md', 'docs/**/*',
     '!docs/releases/**/*', '!docs/PROJECT_HISTORY.md', '!docs/VIDEO*.md', '!docs/MEDIA_GUIDE.md', '!docs/WORKSPACE.md',
     '!docs/images/**/*', '!assets/fonts/**/*', '!**/node_modules/**/*', '!**/.local/**/*', '!**/*.log',
   ],

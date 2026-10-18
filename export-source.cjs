@@ -6,7 +6,7 @@ files.push('LICENSE','settings-store.cjs','detached-launch.cjs','launch-detached
 files.push('pet-shortcut.cjs');
 files.push('codex-network.cjs','safe-write.cjs','lyrics.cjs','lyrics-media.ps1','lyrics-control.ps1');
 files.push('legacy-package-data.cjs','shell-shortcut.ps1', 'repair-shortcuts.ps1','window-observer.cjs');
-const directories=['assets','runtime','ui','test','docs','scripts','.github','build'];
+const directories=['assets','runtime','ui','vendor','test','docs','scripts','.github','build'];
 // Installation content is separate from the source export and developer documentation.
 const sourceOnly = new Set(['export-source.cjs','electron-builder.cjs','launch.cjs']);
 const runtimeFiles = files.filter(name => name.endsWith('.cjs') && !sourceOnly.has(name));

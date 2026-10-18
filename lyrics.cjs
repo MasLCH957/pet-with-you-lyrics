@@ -7,6 +7,7 @@ const { writeJsonAtomic } = require('./safe-write.cjs');
 const LRC_STAMP = /\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?\]/g;
 const LRC_META = /^\[(ar|ti|al|by|offset):(.*)\]$/i;
 const USER_AGENT = 'pet-with-you-lyrics/0.1 (https://github.com/MasLCH957/pet-with-you-lyrics)';
+let simplifiedConverter = null;
 
 function cleanText(value, max = 300) {
   return typeof value === 'string' ? value.replace(/\0/g, '').trim().slice(0, max) : '';
@@ -21,6 +22,15 @@ function decodeHtmlEntities(value) {
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&amp;/g, '&');
+}
+
+function toSimplifiedChinese(value) {
+  try {
+    simplifiedConverter ||= require('./vendor/opencc-js/t2cn.js').Converter({ from: 't', to: 'cn' });
+    return simplifiedConverter(String(value || ''));
+  } catch {
+    return String(value || '');
+  }
 }
 
 function normalizeToken(value) {
@@ -704,6 +714,7 @@ class LyricsService {
     const positionMs = Math.max(0, this.media.positionMs + elapsed - offsetMs);
     const found = lineAt(this.lyrics?.lines, positionMs);
     const durationMs = Math.max(0, this.media.endMs - this.media.startMs);
+    const displayText = (text) => options.simplifyChinese === false ? text : toSimplifiedChinese(text);
     return {
       enabled: true,
       available: true,
@@ -718,8 +729,8 @@ class LyricsService {
       lyrics: this.lyrics
         ? { kind: this.lyrics.kind, source: this.lyrics.source, lineCount: this.lyrics.lines.length }
         : null,
-      current: found?.line ? { text: found.line.text, timeMs: found.line.timeMs } : null,
-      next: found?.next ? { text: found.next.text, timeMs: found.next.timeMs } : null,
+      current: found?.line ? { text: displayText(found.line.text), timeMs: found.line.timeMs } : null,
+      next: found?.next ? { text: displayText(found.next.text), timeMs: found.next.timeMs } : null,
       loading: this.loadingKey === this.mediaId,
       message: this.lyrics ? '' : this.error || (this.loadingKey === this.mediaId ? '正在匹配歌词…' : '暂无歌词'),
     };
@@ -736,4 +747,5 @@ module.exports = {
   normalizeMedia,
   parseLrc,
   plainToTimedLines,
+  toSimplifiedChinese,
 };

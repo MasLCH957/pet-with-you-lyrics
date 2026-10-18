@@ -13,6 +13,13 @@ module.exports=async function({pet,settings,service}){
       }
       checks.pure=menus.pet.every(n=>n.action!=='fullscreen-except');
       checks.connected=menus.connected.some(n=>n.label.includes('在GPT置顶，其余全屏隐藏'));
+      const area=AREAS[0];
+      s.stopMove();s.stopThrow();s.snapAttachment=null;
+      window.petPreferences={...saved,snapMode:'all',disableThrow:true};
+      s.pos={x:area.x-s.sideAllow-20,y:area.y+100};s.dragState.active=true;s.dragState.dragging=true;s.dragTrail=[];
+      S.estimateReleaseVelocity=()=>null;s.onPointerUp({});
+      checks.edgeSnap=Math.abs(s.pos.x-(area.x-s.sideAllow))<1;
+      if(!checks.edgeSnap)throw new Error('edge snap expected '+JSON.stringify({got:s.pos,area,sideAllow:s.sideAllow,snapMode:window.petPreferences.snapMode}));
       let estimates=0;
       S.estimateReleaseVelocity=()=>{estimates++;return {vx:1200,vy:-800};};
       window.petPreferences.disableThrow=true;

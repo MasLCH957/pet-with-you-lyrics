@@ -11,6 +11,7 @@ module.exports=async function(settings,service){
   })()`);
   const mouse=(type,p)=>settings.webContents.sendInputEvent({type,...p});
   async function begin(p){
+    settings.focus();settings.webContents.focus();await sleep(30);
     mouse('mouseMove',{x:p.x,y:p.y});await sleep(30);mouse('mouseDown',{x:p.x,y:p.y,button:'left',clickCount:1});
     for(let i=0;i<40&&!await run('!!moduleDrag');i++)await sleep(25);
     for(let i=1;i<=12;i++){mouse('mouseMove',{x:p.x,y:Math.round(p.y+(p.endY-p.y)*i/12),modifiers:['leftButtonDown']});await sleep(12);}

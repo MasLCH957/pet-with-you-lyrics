@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),http=require('node:http');
 const {ApiSettings,ApiClient,normalizeBase}=require('../api-client.cjs');
 const {startServer}=require('../server.cjs');
-const {snapPosition}=require('../runtime/snap.js');
+const {snapPosition,snapToScreenEdge}=require('../runtime/snap.js');
 const protect=v=>Buffer.from(v).toString('base64'),unprotect=v=>Buffer.from(v,'base64').toString();
 test('API allows IPv4 and IPv6 loopback HTTP but requires HTTPS for remote hosts',()=>{
   for(const host of ['localhost','127.0.0.1','[::1]'])assert.equal(normalizeBase('http://'+host+':1234/v1/'),'http://'+host+':1234/v1');
@@ -73,6 +73,16 @@ test('snap respects separate screens, gaps and full animation canvas, keeps hori
   assert.equal(snapPosition({...input,y:400}).attachment,null);
   assert.equal(snapPosition({...input,attachment:'work',targets:[{...target,y:800}]}).y,513);
   assert.equal(snapPosition({...input,attachment:'work',targets:[]}).attachment,null);
+});
+test('screen edge snapping clamps the pet body at all four sides',()=>{
+  const area={x:0,y:0,width:1000,height:600};
+  const base={width:200,height:112.5,areas:[area],sideAllow:20};
+  assert.deepEqual(snapToScreenEdge({...base,x:-30,y:100}),{x:-20,y:100,snapped:true,edges:['left'],areaIndex:0});
+  assert.deepEqual(snapToScreenEdge({...base,x:830,y:100}),{x:820,y:100,snapped:true,edges:['right'],areaIndex:0});
+  assert.deepEqual(snapToScreenEdge({...base,x:100,y:-5}),{x:100,y:0,snapped:true,edges:['top'],areaIndex:0});
+  assert.deepEqual(snapToScreenEdge({...base,x:100,y:500}),{x:100,y:487.5,snapped:true,edges:['bottom'],areaIndex:0});
+  assert.deepEqual(snapToScreenEdge({...base,x:-30,y:-5}),{x:-20,y:0,snapped:true,edges:['left','top'],areaIndex:0});
+  assert.equal(snapToScreenEdge({...base,x:100,y:100}).snapped,false);
 });
 test('client lifecycle ignores pure mode, disabled switches and detection errors',()=>{
   const l=new (require('../client-lifecycle.cjs').ClientLifecycle)();

@@ -903,6 +903,17 @@ class PetSprite {
     this.stopDragFollow(); // 取消尚未提交的帧，避免松手后旧坐标覆盖落点
     this.stage.style.transform = 'translateY(' + this.bottomPad + 'px)';
     this.syncInputBusy(); // 拖拽结束：交还给常规判定（幂等，非拖拽时多调一次不发 IPC）
+    if(wasDragging&&window.petPreferences?.snapMode==='all'&&typeof window.PetSnap?.snapToScreenEdge==='function'){
+      const edge=window.PetSnap.snapToScreenEdge({
+        x:this.pos.x,
+        y:this.pos.y,
+        width:this.size,
+        height:this.height,
+        areas:AREAS,
+        sideAllow:this.sideAllow,
+      });
+      if(edge.snapped)this.sendBounds(edge.x,edge.y);
+    }
     let restoredWork=false;
     if(this.deferredWork&&!this.manualPlaying){
       const [snapshot,tick]=this.deferredWork;this.deferredWork=null;

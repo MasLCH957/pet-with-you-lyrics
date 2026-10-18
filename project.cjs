@@ -2,10 +2,10 @@ const path = require('node:path');
 const os = require('node:os');
 
 const PRODUCT_NAME = 'pet-with-you';
-const MAINTAINER = 'Refining-colors';
-const REPOSITORY_URL = 'https://github.com/Refining-colors/pet-with-you';
-const MAINTAINER_URL = 'https://github.com/Refining-colors';
-const UPSTREAM_URL = 'https://github.com/PC2005-cloud/dsh-pet';
+const MAINTAINER = 'MasLCH957';
+const REPOSITORY_URL = 'https://github.com/MasLCH957/pet-with-you-lyrics';
+const MAINTAINER_URL = 'https://github.com/MasLCH957';
+const UPSTREAM_URL = 'https://github.com/Refining-colors/pet-with-you';
 const DATA_DIRECTORY_NAME = 'pet-with-you';
 const LEGACY_DATA_DIRECTORY_NAME = 'DSH Pet Companion';
 function dataDirectory(appData = process.env.APPDATA || os.homedir()) {

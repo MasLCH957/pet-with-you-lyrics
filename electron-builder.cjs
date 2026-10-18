@@ -29,5 +29,5 @@ module.exports = {
     installerLanguages: ['zh_CN', 'en_US'],
     license: 'PREVIEW-NOTICE.txt',
   },
-  publish: [{ provider: 'github', owner: 'Refining-colors', repo: 'pet-with-you', releaseType: 'release' }],
+  publish: [{ provider: 'github', owner: 'MasLCH957', repo: 'pet-with-you-lyrics', releaseType: 'release' }],
 };

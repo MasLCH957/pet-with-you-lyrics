@@ -27,6 +27,14 @@ module.exports=async function verify({service,openSettings,getSettings,largeTray
     assert.equal(await settings.webContents.executeJavaScript(`document.querySelector('#petShortcutPreviewHint').hidden`),true);
     assert.match(await settings.webContents.executeJavaScript(`document.querySelector('#clientLauncherResult').textContent`),/尚未创建/);
     assert.equal(await settings.webContents.executeJavaScript(`document.querySelector('#followClientStart')===null`),true);
+    assert.equal(await settings.webContents.executeJavaScript(`!!document.querySelector('#lyricsSection')`),true);
+    assert.equal(await settings.webContents.executeJavaScript(`document.querySelector('#lyricsEnabled').checked`),true);
+    assert.equal(await pet().webContents.executeJavaScript(`!!document.querySelector('.pet-lyrics')`),true);
+    assert.equal((await request('/lyrics/status')).enabled,true);
+    await settings.webContents.executeJavaScript(`document.querySelector('#lyricsOffsetMs').value='250';document.querySelector('#lyricsOffsetMs').dispatchEvent(new Event('input',{bubbles:true}));window.PetSettingsAutosave.flush()`);
+    assert.equal((await request('/preferences')).lyricsOffsetMs,250);
+    await settings.webContents.executeJavaScript(`document.querySelector('#lyricsOffsetMs').value='0';document.querySelector('#lyricsOffsetMs').dispatchEvent(new Event('input',{bubbles:true}));window.PetSettingsAutosave.flush()`);
+    assert.equal((await request('/preferences')).lyricsOffsetMs,0);
     console.error('VERIFY_STAGE: pet-shortcut-verify.cjs');
     await require('./pet-shortcut-verify.cjs')(settings);
     assert.equal(await settings.webContents.executeJavaScript(`document.querySelector('#settingsFileSection').nextElementSibling.tagName`),'FOOTER');
@@ -57,6 +65,8 @@ module.exports=async function verify({service,openSettings,getSettings,largeTray
     await settings.webContents.executeJavaScript(`moduleOrderLoaded=false;loadModuleOrder(${JSON.stringify({basic:[],gpt:[]})})`);
     console.error('VERIFY_STAGE: module-sort-verify.cjs');
     await require('./module-sort-verify.cjs')(settings,service);
+    console.error('VERIFY_STAGE: lyrics-verify.cjs');
+    await require('./lyrics-verify.cjs')({service,pet:pet(),directory:path.join(__dirname,'../qa-output')});
     const sizeControls=await settings.webContents.executeJavaScript(`(()=>{const slider=document.querySelector('.pet-size input[type=range]'),number=document.querySelector('.pet-size input[type=number]'),old=main.pets[0].size;slider.value=555;slider.dispatchEvent(new Event('input'));const fromSlider=Number(number.value)===555&&main.pets[0].size===555;number.value=420;number.dispatchEvent(new Event('input'));const fromNumber=Number(slider.value)===420&&main.pets[0].size===420;number.value=old;number.dispatchEvent(new Event('input'));return {fromSlider,fromNumber};})()`);
     assert.deepEqual(sizeControls,{fromSlider:true,fromNumber:true});
     assert.equal(await pet().webContents.executeJavaScript('window.__dshPetDebug.configOk'),true);

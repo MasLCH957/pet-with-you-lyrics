@@ -110,6 +110,7 @@ if(!app.requestSingleInstanceLock()){app.quit();}else{
   app.on('pet-open-settings',openSettings);
   app.on('pet-show-request',win=>{if(policy)policy.requestShow(win);else win.showInactive();});
   startServer({dataDir,defaultMode:'pet',monitorSessions:!process.env.PET_TEST_DATA_DIR,
+    lyricsMediaSource:new (require('./lyrics.cjs').WindowsMediaSource)(),
     onRuntimeInfo:()=>({name:PRODUCT_NAME,version:app.getVersion(),development:developmentPreview}),
     onClientLauncherStatus:()=>require('./client-launcher.cjs').clientLauncherStatus(dataDir),
     onSettingsLocate(file){if(!process.env.PET_TEST_DATA_DIR)shell.showItemInFolder(file);},
@@ -137,7 +138,12 @@ if(!app.requestSingleInstanceLock()){app.quit();}else{
     policy?.apply();
     for(const w of BrowserWindow.getAllWindows())if(w!==settings&&!w.isDestroyed())w.webContents.send('pet:preferences',next);
     largeTrayMenu.close();
-  },onChooseRuntime:async()=>{const r=await dialog.showOpenDialog({properties:['openFile'],filters:[{name:'Codex',extensions:['exe']}]});if(r.canceled)return {canceled:true};require('./codex-client.cjs').saveRuntime(r.filePaths[0]);return {ok:true};},onReview:reviewHooks,onTray:value=>setTrayVisible(value),onFontImport:async()=>{const r=await dialog.showOpenDialog({properties:['openFile'],filters:[{name:'字体文件',extensions:['ttf','otf']}]});return r.canceled?null:r.filePaths[0];},protect(value){if(!safeStorage.isEncryptionAvailable())throw new Error('系统密钥保护不可用');return safeStorage.encryptString(value).toString('base64');},unprotect(value){return safeStorage.decryptString(Buffer.from(value,'base64'));},onNotify(text){if(!BrowserWindow.getFocusedWindow()&&Notification.isSupported())new Notification({title:PRODUCT_NAME,body:text}).show();}}).then(s=>{
+  },onChooseRuntime:async()=>{const r=await dialog.showOpenDialog({properties:['openFile'],filters:[{name:'Codex',extensions:['exe']}]});if(r.canceled)return {canceled:true};require('./codex-client.cjs').saveRuntime(r.filePaths[0]);return {ok:true};},onReview:reviewHooks,onTray:value=>setTrayVisible(value),onFontImport:async()=>{const r=await dialog.showOpenDialog({properties:['openFile'],filters:[{name:'字体文件',extensions:['ttf','otf']}]});return r.canceled?null:r.filePaths[0];},onChooseLyrics:async()=>{
+    const options={title:'为当前歌曲选择 LRC 歌词',properties:['openFile'],filters:[{name:'LRC 歌词',extensions:['lrc']}]};
+    const r=settings&&!settings.isDestroyed()?await dialog.showOpenDialog(settings,options):await dialog.showOpenDialog(options);
+    if(r.canceled||!r.filePaths.length)return {canceled:true};
+    return {canceled:false,filePath:r.filePaths[0]};
+  },protect(value){if(!safeStorage.isEncryptionAvailable())throw new Error('系统密钥保护不可用');return safeStorage.encryptString(value).toString('base64');},unprotect(value){return safeStorage.decryptString(Buffer.from(value,'base64'));},onNotify(text){if(!BrowserWindow.getFocusedWindow()&&Notification.isSupported())new Notification({title:PRODUCT_NAME,body:text}).show();}}).then(s=>{
     service=s;
     process.env.DSH_PET_CONFIG_URL=s.base+'/config';
     process.env.DSH_PET_PETS=JSON.stringify(Object.values(s.config).flatMap(c=>c.pets).filter(p=>['desktop','both'].includes(p.display)));

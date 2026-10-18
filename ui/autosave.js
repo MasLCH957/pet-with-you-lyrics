@@ -4,7 +4,7 @@
   const status=document.createElement('p');status.id='autosaveStatus';status.setAttribute('role','status');
   status.textContent='修改后关闭设置即可自动保存并应用。';
   document.querySelector('.settings-tabs').after(status);
-  const preferenceIds=['disableEventResponse','windowMode','clickAction','actionSpeed','autostart','snapMode','followClientClose','replySeconds','quotaAfterTurn','quotaMode','quotaSeconds','chatSource','autoWhisperProbability','disableRoaming','disableThrow','disableEdgeBounce','ignoreAccountTimeouts','taskBasicFeedback','taskNativeFeedback','whisperStreaming','gptFastReply'];
+  const preferenceIds=['disableEventResponse','windowMode','clickAction','actionSpeed','autostart','snapMode','followClientClose','replySeconds','quotaAfterTurn','quotaMode','quotaSeconds','chatSource','autoWhisperProbability','disableRoaming','disableThrow','disableEdgeBounce','ignoreAccountTimeouts','taskBasicFeedback','taskNativeFeedback','whisperStreaming','gptFastReply','lyricsEnabled','lyricsAutoFetch','lyricsOffsetMs'];
   const apiIds=['apiProfileName','apiBaseUrl','apiModel','apiKey'];
   const proxyIds=['proxyProfileName','proxyName','proxyEndpoint','credential','envName','proxyKey','authHeader','bearer','quotaFormat','valuePath','totalPath','quotaScale','quotaUnit','clientCredential'];
   const configSelector='#pets input,#clientPets input,#categories input,[data-whisper-pet],#collision,#notify,#interval,#apiWhisperInterval';
@@ -73,6 +73,7 @@
         if(['replySeconds','quotaSeconds'].includes(id))prefs[id]=number(id,1,3600);
         if(id==='autoWhisperProbability')prefs[id]=number(id,0,100);
         if(id==='actionSpeed')prefs[id]=number(id,.5,2);
+        if(id==='lyricsOffsetMs')prefs[id]=number(id,-30000,30000);
         if(id==='chatSource')prefs.chatSourceChosen=true;
       }
       if(dirty.has('config')||dirty.has('advanced')){

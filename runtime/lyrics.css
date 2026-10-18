@@ -1,0 +1,122 @@
+.pet-lyrics {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 8px);
+  width: clamp(210px, calc(var(--pet-size, 462px) * 0.82), 430px);
+  padding: 9px 14px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(17, 29, 39, 0.9), rgba(33, 53, 64, 0.86));
+  box-shadow:
+    0 10px 28px rgba(15, 27, 34, 0.2),
+    0 2px 7px rgba(15, 27, 34, 0.16);
+  color: #fff;
+  font-family: 'Microsoft YaHei UI', 'PingFang SC', sans-serif;
+  pointer-events: none;
+  text-align: center;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, 5px);
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s ease,
+    visibility 0.22s;
+  z-index: 4;
+}
+
+.pet-lyrics.is-on {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+}
+
+.pet-lyrics-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
+  color: rgba(230, 244, 246, 0.72);
+  font-size: clamp(10px, calc(var(--pet-size, 462px) * 0.022), 13px);
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.pet-lyrics-head::before {
+  content: '♪';
+  flex: none;
+  color: #8fe0d2;
+  font-size: 1.12em;
+}
+
+.pet-lyrics.is-paused .pet-lyrics-head::before {
+  content: 'Ⅱ';
+  font-family: 'Segoe UI', sans-serif;
+  font-size: 0.8em;
+}
+
+.pet-lyrics-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pet-lyrics-current,
+.pet-lyrics-next {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pet-lyrics-current {
+  min-height: 1.55em;
+  margin-top: 6px;
+  color: #fff;
+  font-size: clamp(13px, calc(var(--pet-size, 462px) * 0.035), 18px);
+  font-weight: 600;
+  line-height: 1.55;
+  letter-spacing: 0.015em;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.26);
+  transition: opacity 0.16s ease;
+}
+
+.pet-lyrics-next {
+  min-height: 1.35em;
+  margin-top: 1px;
+  color: rgba(232, 245, 246, 0.58);
+  font-size: clamp(10px, calc(var(--pet-size, 462px) * 0.026), 14px);
+  line-height: 1.45;
+}
+
+.pet-lyrics.is-empty .pet-lyrics-current {
+  color: rgba(232, 245, 246, 0.72);
+  font-weight: 400;
+}
+
+.pet-lyrics-progress {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 3px;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.pet-lyrics-progress > span {
+  display: block;
+  width: var(--lyrics-progress, 0%);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #72cabc, #b6ebdf);
+  transition: width 0.45s linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pet-lyrics,
+  .pet-lyrics-current,
+  .pet-lyrics-progress > span {
+    transition: none;
+  }
+}

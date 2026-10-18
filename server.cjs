@@ -10,13 +10,14 @@ const {inspectConnection,installHooks,createConnectionCheck}=require('./connecti
 const {Appearance}=require('./appearance.cjs');
 const {Preferences}=require('./preferences.cjs');
 const {ApiSettings,ApiClient}=require('./api-client.cjs');
+const {LyricsService}=require('./lyrics.cjs');
 
 const {Diagnostics,issue}=require('./diagnostics.cjs');
 const ROOT=__dirname;
 const MIME={'.webm':'video/webm','.mov':'video/quicktime','.png':'image/png','.ttf':'font/ttf','.otf':'font/otf','.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8'};
 const readJson=(p,fallback)=>{try{return JSON.parse(fs.readFileSync(p,'utf8'));}catch{return fallback;}};
 const writeJson=(p,v)=>{fs.writeFileSync(p+'.tmp',JSON.stringify(v,null,2));fs.renameSync(p+'.tmp',p);};
-async function startServer({dataDir,hooksAdapter={inspect:inspectConnection,install:installHooks},defaultMode='pet',monitorSessions=false,sessionRoot,onRuntimeInfo=()=>({development:false}),onClientLauncherStatus=()=>({configured:false}),onSettingsLocate=()=>{},onPetShortcut=async()=>({canceled:true}),onClientLauncher=async()=>({canceled:true}),onOpenThread=async()=>{throw new Error('无法打开对话');},onChange=()=>{},onPreferences=()=>{},onNotify=()=>{},onReview=()=>{},onChooseRuntime=async()=>({canceled:true}),onTray=()=>{},onFontImport=async()=>null,onLogsOpen=async()=>{throw new Error('目录打开功能不可用');},onLogsExport=async()=>{throw new Error('日志导出功能不可用');},protect,unprotect}){
+async function startServer({dataDir,hooksAdapter={inspect:inspectConnection,install:installHooks},defaultMode='pet',monitorSessions=false,sessionRoot,lyricsMediaSource=null,onRuntimeInfo=()=>({development:false}),onClientLauncherStatus=()=>({configured:false}),onSettingsLocate=()=>{},onPetShortcut=async()=>({canceled:true}),onClientLauncher=async()=>({canceled:true}),onOpenThread=async()=>{throw new Error('无法打开对话');},onChange=()=>{},onPreferences=()=>{},onNotify=()=>{},onReview=()=>{},onChooseRuntime=async()=>({canceled:true}),onTray=()=>{},onFontImport=async()=>null,onChooseLyrics=async()=>null,onLogsOpen=async()=>{throw new Error('目录打开功能不可用');},onLogsExport=async()=>{throw new Error('日志导出功能不可用');},protect,unprotect}){
   fs.mkdirSync(dataDir,{recursive:true});fs.mkdirSync(path.join(dataDir,'pet'),{recursive:true});
   const settingsStore=new (require('./settings-store.cjs').SettingsStore)(dataDir);
   const paths={defaultFile:path.join(ROOT,'assets/config.jsonc'),userFile:settingsStore.file,petDir:path.join(dataDir,'pet'),settings:settingsStore};
@@ -32,6 +33,8 @@ async function startServer({dataDir,hooksAdapter={inspect:inspectConnection,inst
   const client=new CodexClient(dataDir);
   const appearance=new Appearance(dataDir);
   const preferences=new Preferences(dataDir,defaultMode);
+  const lyrics=new LyricsService({dataDir,mediaSource:lyricsMediaSource});
+  lyrics.configure({enabled:preferences.value.lyricsEnabled,autoFetch:preferences.value.lyricsAutoFetch});
   diagnostics.ignoreAccountTimeouts=()=>preferences.value.ignoreAccountTimeouts;
   const apiSettings=new ApiSettings(dataDir,{protect,unprotect});
   const apiClient=new ApiClient(apiSettings);
@@ -150,6 +153,7 @@ async function startServer({dataDir,hooksAdapter={inspect:inspectConnection,inst
       if(route==='/settings-file.js')return file(path.join(ROOT,'ui'),'settings-file.js');
       if(route==='/hooks-review-icon.png')return file(path.join(ROOT,'ui'),'hooks-review-icon.png');
       if(route==='/ui.js')return file(path.join(ROOT,'ui'),'ui.js');
+      if(route==='/lyrics.js')return file(path.join(ROOT,'ui'),'lyrics.js');
       if(route==='/autosave.js')return file(path.join(ROOT,'ui'),'autosave.js');
       if(route==='/shared-core.js')return file(path.join(ROOT,'runtime'),'shared-core.js');
       if(route==='/appearance.js')return file(path.join(ROOT,'ui'),'appearance.js');
@@ -161,6 +165,7 @@ async function startServer({dataDir,hooksAdapter={inspect:inspectConnection,inst
           if(previous.chatSource!==next.chatSource||previous.chatSourceChosen!==next.chatSourceChosen){modeEpoch++;whispers.clear();client.close();apiClient.close();}
           if(before!==next.mode){modeEpoch++;connectionCheck.invalidate();rateCache=null;rateAt=0;tasks.sessions.clear();tasks.ts=Date.now();lastHook=null;whispers.clear();client.close();apiClient.close();}
           try{await onPreferences(next,before!==next.mode||previous.chatSource!==next.chatSource||previous.chatSourceChosen!==next.chatSourceChosen);}catch(e){preferences.save(previous);try{await onPreferences(previous,true);}catch{}throw e;}
+          lyrics.configure({enabled:next.lyricsEnabled,autoFetch:next.lyricsAutoFetch});
           if(monitorSessions)monitor.setEnabled(connected());
           return json(publicPreferences());
         }
@@ -184,6 +189,14 @@ async function startServer({dataDir,hooksAdapter={inspect:inspectConnection,inst
       if(route==='/appearance/import'&&req.method==='POST')return json(appearance.importFile(await onFontImport(),(await body()).target));
       if(route==='/tray/show'&&req.method==='POST'){onTray(true);return json({ok:true});}
       if(route==='/health')return json({ok:true,animations:fs.readdirSync(path.join(ROOT,'assets/webm')).length,lastHook,pendingChat:[...pendingChat],work:tasks.snapshot(),monitor:monitor.status(),mode:preferences.value.mode,apiConfigured:apiSettings.publicValue().configured});
+      if(route==='/lyrics/status'&&req.method==='GET')return json(lyrics.status({offsetMs:preferences.value.lyricsOffsetMs}));
+      if(route==='/lyrics/local/choose'&&req.method==='POST'){
+        const selected=await onChooseLyrics();
+        if(!selected||selected.canceled)return json({canceled:true});
+        return json(await lyrics.useLocalFile(selected.filePath||selected));
+      }
+      if(route==='/lyrics/local/clear'&&req.method==='POST')return json(lyrics.clearLocal());
+      if(route==='/lyrics/refresh'&&req.method==='POST')return json(await lyrics.refresh());
       if(route==='/reply-state'){
         if(!findPetInstance(config,id))return json({error:'找不到宠物'},404);
         if(req.method==='PUT'){
@@ -331,6 +344,6 @@ async function startServer({dataDir,hooksAdapter={inspect:inspectConnection,inst
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const base=`http://127.0.0.1:${server.address().port}${prefix}`;
   writeJson(path.join(dataDir,'connection.json'),{base,pid:process.pid});
-  return {server,base,config,client,preferences,apiSettings,diagnostics,close(){monitor.close();client.close();apiClient.close();server.close();},paths};
+  return {server,base,config,client,preferences,apiSettings,diagnostics,lyrics,close(){monitor.close();lyrics.close();client.close();apiClient.close();server.close();},paths};
 }
 module.exports={startServer};

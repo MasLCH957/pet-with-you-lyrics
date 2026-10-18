@@ -84,6 +84,7 @@ async function boot() {
     window.__dshPetDebug.configOk = true;
     window.__dshPetDebug.spriteCount = sprites.length;
     for (const s of sprites){s.playIdle();await s.restoreReply();}
+    startLyricsOverlay();
     startLoops();
   } catch (e) {
     showError('配置加载失败：' + (e && e.message ? String(e.message) : String(e)));

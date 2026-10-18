@@ -34,6 +34,9 @@ async function run(program, args, options = {}, input) {
     assert.ok(connection, 'packaged app starts its isolated service');
     const health = await fetch(connection.base + '/health').then(r => r.json());
     assert.equal(health.mode, 'pet'); assert.equal(health.apiConfigured, false); assert.equal(health.animations, 106);
+    for (const file of ['lyrics.cjs','lyrics-media.ps1','runtime/lyrics.js','runtime/lyrics.css','ui/lyrics.js']) assert.ok(fs.existsSync(path.join(root,file)),'packaged lyrics runtime includes '+file);
+    const lyricsStatus = await fetch(connection.base + '/lyrics/status').then(r => r.json());
+    assert.equal(lyricsStatus.enabled, true, 'packaged lyrics display is enabled by default');
     const runtime = await fetch(connection.base + '/runtime-info').then(r => r.json());
     assert.equal(runtime.name, 'pet-with-you'); assert.equal(runtime.development, false);
     assert.equal(runtime.version, require('../package.json').version);
@@ -41,6 +44,7 @@ async function run(program, args, options = {}, input) {
     assert.ok(fs.existsSync(path.join(root,'build','codex-withu.ico')));
     assert.equal((await fetch(connection.base+'/codex-withu.png')).status,200);
     const settingsHtml=await fetch(connection.base+'/settings').then(r=>r.text());
+    assert.ok(settingsHtml.includes('src="lyrics.js"'),'installed settings load the lyrics controls');
     assert.ok(!/id="followClientStart"/.test(settingsHtml),'installed settings remove retired client-start toggle');
     assert.ok(settingsHtml.includes('创建联动启动器')&&settingsHtml.includes('Codex withu'),'installed settings show current launcher');
     assert.ok(settingsHtml.includes('id="disableThrow"')&&settingsHtml.includes('id="disableEdgeBounce"'),'installed settings expose independent motion switches');

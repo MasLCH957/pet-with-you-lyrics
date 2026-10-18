@@ -1,5 +1,5 @@
 {
-  "name": "pet-with-you",
+  "name": "pet-with-you-lyrics",
   "version": "1.0.1",
   "private": true,
   "main": "bootstrap.cjs",
@@ -21,18 +21,18 @@
     "electron": "^41.10.7",
     "electron-builder": "^26.15.3"
   },
-  "description": "Windows desktop pet with optional Codex task feedback and OpenAI-compatible chat",
+  "description": "Windows desktop pet with synchronized media lyrics, optional Codex task feedback and OpenAI-compatible chat",
   "engines": {
     "node": ">=22.12.0"
   },
   "author": "Refining-colors",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Refining-colors/pet-with-you.git"
+    "url": "https://github.com/MasLCH957/pet-with-you-lyrics.git"
   },
-  "homepage": "https://github.com/Refining-colors/pet-with-you",
+  "homepage": "https://github.com/MasLCH957/pet-with-you-lyrics",
   "bugs": {
-    "url": "https://github.com/Refining-colors/pet-with-you/issues"
+    "url": "https://github.com/MasLCH957/pet-with-you-lyrics/issues"
   },
   "license": "MIT"
 }

@@ -47,12 +47,16 @@ module.exports = async function verifyLyrics({ service, pet, directory }) {
     controlRect: true,
     playWidth: 34,
   });
-  const point = await pet.webContents.executeJavaScript(`(()=>{const r=document.querySelector('[aria-label="下一首"]').getBoundingClientRect(),x=Math.round(r.left+r.width/2),y=Math.round(r.top+r.height/2);return {x:Math.round(x*CONFIG.scale),y:Math.round(y*CONFIG.scale),clientX:x,clientY:y};})()`);
   pet.focus();
   pet.webContents.focus();
-  await sleep(100);
+  await sleep(250);
+  const point = await pet.webContents.executeJavaScript(`(()=>{const r=document.querySelector('[aria-label="下一首"]').getBoundingClientRect(),x=Math.round(r.left+r.width/2),y=Math.round(r.top+r.height/2);return {x:Math.round(x*CONFIG.scale),y:Math.round(y*CONFIG.scale),clientX:x,clientY:y};})()`);
+  await sleep(60);
   await pet.webContents.executeJavaScript(`window.__lyricsPointerProbe=null;window.addEventListener('mousemove',event=>{window.__lyricsPointerProbe={x:event.clientX,y:event.clientY}},{once:true})`);
   pet.webContents.sendInputEvent({ type: 'mouseMove', x: point.x, y: point.y });
+  await sleep(80);
+  const currentPoint = await pet.webContents.executeJavaScript(`(()=>{const r=document.querySelector('[aria-label="下一首"]').getBoundingClientRect(),x=Math.round(r.left+r.width/2),y=Math.round(r.top+r.height/2);return {x:Math.round(x*CONFIG.scale),y:Math.round(y*CONFIG.scale),clientX:x,clientY:y};})()`);
+  pet.webContents.sendInputEvent({ type: 'mouseMove', x: currentPoint.x, y: currentPoint.y });
   await sleep(200);
   const pointerState = await pet.webContents.executeJavaScript(`({interactive:sprites[0]._interactive,lyricsHover:sprites[0].lyricsHover,inputBusy:sprites[0]._inputBusy})`);
   const pointerDebug = await pet.webContents.executeJavaScript(`({point:${JSON.stringify(point)},rect:sprites[0].lyricsControlRect,event:window.__lyricsPointerProbe})`);
@@ -69,4 +73,29 @@ module.exports = async function verifyLyrics({ service, pet, directory }) {
   assert.equal(image.isEmpty(), false);
   fs.mkdirSync(directory, { recursive: true });
   fs.writeFileSync(path.join(directory, 'lyrics-overlay.png'), image.toPNG());
+
+  try {
+    const clipped = await pet.webContents.executeJavaScript(`(async()=>{
+      const s=sprites[0],area=AREAS[0];
+      window.__lyricsClipRestore={pos:{x:s.pos.x,y:s.pos.y},prefs:{...window.petPreferences},attachment:s.snapAttachment};
+      window.petPreferences={...window.petPreferences,snapMode:'none'};s.snapAttachment=null;
+      s.sendBounds(area.x+area.width-s.size-2,area.y+area.height-s.height-2);
+      activeLyricsOverlay.queueLayout();
+      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+      const bounds=s.visibleClampRect(),card=document.querySelector('.pet-lyrics').getBoundingClientRect();
+      return {
+        above:document.querySelector('.pet-lyrics').classList.contains('is-above'),
+        inside:card.left>=bounds.x+3&&card.right<=bounds.x+bounds.w-3&&card.top>=bounds.y+3&&card.bottom<=bounds.y+bounds.h-3,
+        bounds,
+        card:{x:card.x,y:card.y,width:card.width,height:card.height},
+      };
+    })()`);
+    assert.equal(clipped.inside, true, JSON.stringify(clipped));
+    assert.equal(clipped.above, true, JSON.stringify(clipped));
+    const clampedImage = await pet.webContents.capturePage();
+    assert.equal(clampedImage.isEmpty(), false);
+    fs.writeFileSync(path.join(directory, 'lyrics-overlay-clamped.png'), clampedImage.toPNG());
+  } finally {
+    await pet.webContents.executeJavaScript(`(()=>{const s=sprites[0],saved=window.__lyricsClipRestore;if(saved){window.petPreferences=saved.prefs;s.snapAttachment=saved.attachment;s.sendBounds(saved.pos.x,saved.pos.y);activeLyricsOverlay.queueLayout();delete window.__lyricsClipRestore;}})()`);
+  }
 };

@@ -16,6 +16,7 @@ class LyricsOverlay {
     this.sprite = sprite;
     this.closed = false;
     this.timer = null;
+    this.layoutFrame = null;
     this.lastSignature = '';
     this.controlBusy = false;
     this.noticeText = '';
@@ -97,7 +98,7 @@ class LyricsOverlay {
       this.controlBusy = false;
       this.setControlsDisabled(false);
       this.lastSignature = '';
-      this.updateControlRect();
+      this.queueLayout();
     }
   }
 
@@ -105,19 +106,47 @@ class LyricsOverlay {
     for (const button of [this.previous, this.play, this.nextControl]) button.disabled = disabled;
   }
 
-  updateControlRect() {
-    requestAnimationFrame(() => {
-      if (this.closed || this.el.hidden || !this.el.classList.contains('is-on')) {
-        this.sprite.setLyricsControlRect(null);
-        return;
-      }
-      const rect = this.controls.getBoundingClientRect();
-      this.sprite.setLyricsControlRect({
-        x: rect.left,
-        y: rect.top,
-        width: rect.width,
-        height: rect.height,
-      });
+  queueLayout() {
+    if (this.layoutFrame !== null || this.closed) return;
+    this.layoutFrame = requestAnimationFrame(() => {
+      this.layoutFrame = null;
+      this.layout();
+    });
+  }
+
+  layout() {
+    if (this.closed || this.el.hidden || !this.el.classList.contains('is-on')) {
+      this.sprite.setLyricsControlRect(null);
+      return;
+    }
+    const stage = this.sprite.stage.getBoundingClientRect();
+    const bounds = this.sprite.visibleClampRect?.() || { x: 0, y: 0, w: innerWidth, h: innerHeight };
+    const before = this.el.getBoundingClientRect();
+    const bottomSpace = bounds.y + bounds.h - (stage.top + stage.height) - 8;
+    const topSpace = stage.top - bounds.y - 8;
+    const shouldAbove = bottomSpace < before.height + 2 && topSpace > bottomSpace;
+    if (shouldAbove !== this.el.classList.contains('is-above')) {
+      this.el.classList.toggle('is-above', shouldAbove);
+      this.queueLayout();
+      return;
+    }
+    this.el.style.translate = '0px 0px';
+    const rect = this.el.getBoundingClientRect();
+    const result = window.PetSnap.clampRect({
+      x: rect.left,
+      y: rect.top,
+      width: rect.width,
+      height: rect.height,
+      bounds: { x: bounds.x, y: bounds.y, width: bounds.w, height: bounds.h },
+      margin: 4,
+    });
+    this.el.style.translate = result.dx + 'px ' + result.dy + 'px';
+    const control = this.controls.getBoundingClientRect();
+    this.sprite.setLyricsControlRect({
+      x: control.left,
+      y: control.top,
+      width: control.width,
+      height: control.height,
     });
   }
 
@@ -147,6 +176,7 @@ class LyricsOverlay {
       this.hide();
       return;
     }
+    this.queueLayout();
     const current = state.current?.text || (state.next?.text ? state.next.text : '');
     const next = state.current ? state.next?.text || '' : '';
     const message = state.loading ? '正在匹配歌词…' : state.message || '暂无歌词';
@@ -178,7 +208,6 @@ class LyricsOverlay {
     this.next.textContent = next;
     this.next.title = next;
     this.progressFill.style.setProperty('--lyrics-progress', Math.round(Math.max(0, Math.min(1, state.progress || 0)) * 100) + '%');
-    this.updateControlRect();
     window.__dshPetDebug.lyrics = {
       title: state.title,
       artist: state.artist,
@@ -189,8 +218,11 @@ class LyricsOverlay {
   }
 
   hide() {
+    cancelAnimationFrame(this.layoutFrame);
+    this.layoutFrame = null;
     this.lastSignature = '';
-    this.el.classList.remove('is-on', 'is-paused', 'is-empty');
+    this.el.classList.remove('is-on', 'is-paused', 'is-empty', 'is-above');
+    this.el.style.translate = '0px 0px';
     this.el.hidden = true;
     this.sprite.setLyricsControlRect(null);
     if (window.__dshPetDebug) delete window.__dshPetDebug.lyrics;
@@ -199,6 +231,7 @@ class LyricsOverlay {
   close() {
     this.closed = true;
     clearTimeout(this.timer);
+    cancelAnimationFrame(this.layoutFrame);
     this.sprite.setLyricsControlRect(null);
     this.el.remove();
   }
@@ -223,3 +256,5 @@ function startLyricsOverlay() {
   activeLyricsOverlay = new LyricsOverlay(sprite);
   activeLyricsOverlay.start();
 }
+
+window.addEventListener('resize', () => activeLyricsOverlay?.queueLayout(), { passive: true });

@@ -11,11 +11,16 @@ module.exports=async function(settings,service){
   })()`);
   const mouse=(type,p)=>settings.webContents.sendInputEvent({type,...p});
   async function begin(p){
-    settings.focus();settings.webContents.focus();await sleep(30);
-    mouse('mouseMove',{x:p.x,y:p.y});await sleep(30);mouse('mouseDown',{x:p.x,y:p.y,button:'left',clickCount:1});
-    for(let i=0;i<40&&!await run('!!moduleDrag');i++)await sleep(25);
-    for(let i=1;i<=12;i++){mouse('mouseMove',{x:p.x,y:Math.round(p.y+(p.endY-p.y)*i/12),modifiers:['leftButtonDown']});await sleep(12);}
-    for(let i=0;i<40&&!await run(`moduleDrag?.started===true&&Math.abs(moduleDrag.y-${p.endY})<=1`);i++)await sleep(25);
+    let started=false;
+    for(let attempt=0;attempt<3&&!started;attempt++){
+      settings.focus();settings.webContents.focus();await sleep(40+attempt*40);
+      mouse('mouseMove',{x:p.x,y:p.y});await sleep(40);mouse('mouseDown',{x:p.x,y:p.y,button:'left',clickCount:1});
+      for(let i=0;i<40&&!await run('!!moduleDrag');i++)await sleep(25);
+      for(let i=1;i<=12;i++){mouse('mouseMove',{x:p.x,y:Math.round(p.y+(p.endY-p.y)*i/12),modifiers:['leftButtonDown']});await sleep(12);}
+      for(let i=0;i<40&&!await run(`moduleDrag?.started===true`);i++)await sleep(25);
+      started=await run(`moduleDrag?.started===true&&moduleDrag.handle.hasPointerCapture(moduleDrag.pointerId)`);
+      if(!started){mouse('mouseUp',{x:p.x,y:p.endY,button:'left',clickCount:1});for(let i=0;i<20&&await run('!!moduleDrag');i++)await sleep(25);await sleep(80);}
+    }
     assert.equal(await run(`moduleDrag?.started===true&&moduleDrag.handle.hasPointerCapture(moduleDrag.pointerId)`),true,JSON.stringify(await run(`({inert:document.body.inert,scroll:scrollY,drag:moduleDrag?{started:moduleDrag.started,y:moduleDrag.y}:null,hit:document.elementFromPoint(${p.x},${p.y})?.outerHTML.slice(0,200)})`)));
   }
   async function release(p){

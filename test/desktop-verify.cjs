@@ -8,6 +8,12 @@ module.exports=async function verify({service,openSettings,getSettings,largeTray
   const pet=()=>BrowserWindow.getAllWindows().find(w=>w!==getSettings());
   const request=async(route,body)=>{const r=await fetch(service.base+route,{method:body?'PUT':'GET',body:body?JSON.stringify(body):undefined});return r.json();};
   try{
+    if(process.env.PET_VERIFY_ONLY==='lyrics'){
+      await sleep(700);
+      await require('./lyrics-verify.cjs')({service,pet:pet(),directory:path.join(__dirname,'../qa-output')});
+      app.quit();
+      return;
+    }
     service.client.start=async()=>{throw new Error('Codex must not start during independent UI test');};
     await sleep(700);
     assert.ok(!getSettings(),'normal startup must not open Settings');

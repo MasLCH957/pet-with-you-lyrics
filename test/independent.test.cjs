@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),http=require('node:http');
 const {ApiSettings,ApiClient,normalizeBase}=require('../api-client.cjs');
 const {startServer}=require('../server.cjs');
-const {snapPosition,snapToScreenEdge}=require('../runtime/snap.js');
+const {snapPosition,snapToScreenEdge,clampRect}=require('../runtime/snap.js');
 const protect=v=>Buffer.from(v).toString('base64'),unprotect=v=>Buffer.from(v,'base64').toString();
 test('API allows IPv4 and IPv6 loopback HTTP but requires HTTPS for remote hosts',()=>{
   for(const host of ['localhost','127.0.0.1','[::1]'])assert.equal(normalizeBase('http://'+host+':1234/v1/'),'http://'+host+':1234/v1');
@@ -83,6 +83,13 @@ test('screen edge snapping clamps the pet body at all four sides',()=>{
   assert.deepEqual(snapToScreenEdge({...base,x:100,y:500}),{x:100,y:487.5,snapped:true,edges:['bottom'],areaIndex:0});
   assert.deepEqual(snapToScreenEdge({...base,x:-30,y:-5}),{x:-20,y:0,snapped:true,edges:['left','top'],areaIndex:0});
   assert.equal(snapToScreenEdge({...base,x:100,y:100}).snapped,false);
+});
+test('floating lyric boxes clamp inside the visible screen rectangle',()=>{
+  const bounds={x:0,y:0,width:1000,height:600};
+  assert.deepEqual(clampRect({x:-100,y:100,width:300,height:100,bounds}),{dx:104,dy:0,clamped:true});
+  assert.deepEqual(clampRect({x:850,y:100,width:300,height:100,bounds}),{dx:-154,dy:0,clamped:true});
+  assert.deepEqual(clampRect({x:100,y:560,width:300,height:100,bounds}),{dx:0,dy:-64,clamped:true});
+  assert.deepEqual(clampRect({x:100,y:100,width:300,height:100,bounds}),{dx:0,dy:0,clamped:false});
 });
 test('client lifecycle ignores pure mode, disabled switches and detection errors',()=>{
   const l=new (require('../client-lifecycle.cjs').ClientLifecycle)();

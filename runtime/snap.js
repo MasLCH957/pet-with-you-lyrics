@@ -28,6 +28,12 @@
     else if(y>=maxY-tolerance){nextY=maxY;edges.push('bottom');}
     return {x:nextX,y:nextY,snapped:edges.length>0,edges,areaIndex};
   }
+  function clampRect({x,y,width,height,bounds,margin=4}){
+    if(!bounds)return {dx:0,dy:0,clamped:false};
+    const dx=Math.max(bounds.x+margin-x,Math.min(0,bounds.x+bounds.width-margin-(x+width)));
+    const dy=Math.max(bounds.y+margin-y,Math.min(0,bounds.y+bounds.height-margin-(y+height)));
+    return {dx,dy,clamped:dx!==0||dy!==0};
+  }
   function snapPosition({x,y,width,height,canvasHeight,targets,attachment,threshold=36,gap=3}){
     const cx=x+width/2;
     const valid=targets.filter(t=>Number.isFinite(t.y)&&cx>=t.x&&cx<=t.x+t.width&&t.y-canvasHeight-gap>=t.top);
@@ -37,5 +43,5 @@
     const t=kept||near[0];
     return t?{x,y:t.y-canvasHeight-gap,attachment:t.id}:{x,y,attachment:null};
   }
-  if(typeof module==='object')module.exports={snapPosition,snapToScreenEdge};else root.PetSnap={snapPosition,snapToScreenEdge};
+  if(typeof module==='object')module.exports={snapPosition,snapToScreenEdge,clampRect};else root.PetSnap={snapPosition,snapToScreenEdge,clampRect};
 })(typeof window==='object'?window:globalThis);

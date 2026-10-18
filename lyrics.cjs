@@ -140,7 +140,12 @@ function lyricPayload(value) {
 class WindowsMediaSource {
   constructor(options = {}) {
     this.script = options.script || path.join(__dirname, 'lyrics-media.ps1');
+    this.controlScript = options.controlScript || path.join(__dirname, 'lyrics-control.ps1');
     this.spawnImpl = options.spawnImpl || spawn;
+    this.controlImpl = options.controlImpl || ((action) => controlWindowsMedia(action, {
+      script: this.controlScript,
+      spawnImpl: this.spawnImpl,
+    }));
     this.logger = options.logger || console;
     this.onSnapshot = null;
     this.onError = null;
@@ -232,6 +237,78 @@ class WindowsMediaSource {
       }
     }
   }
+
+  control(action) {
+    return this.controlImpl(action);
+  }
+}
+
+function controlWindowsMedia(action, options = {}) {
+  if (!['previous', 'next', 'toggle'].includes(action)) {
+    return Promise.reject(new Error('不支持的媒体控制操作'));
+  }
+  return new Promise((resolve, reject) => {
+    let child;
+    try {
+      child = (options.spawnImpl || spawn)(
+        'powershell.exe',
+        ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', options.script || path.join(__dirname, 'lyrics-control.ps1'), '-Action', action],
+        { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] },
+      );
+    } catch {
+      reject(new Error('媒体控制启动失败'));
+      return;
+    }
+    let stdout = '';
+    let stderr = '';
+    let settled = false;
+    const finish = (error, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (error) reject(error);
+      else resolve(value);
+    };
+    const timer = setTimeout(() => {
+      try {
+        child.kill();
+      } catch {
+        // The player command may already have ended.
+      }
+      finish(new Error('媒体控制超时'));
+    }, 8000);
+    child.stdout?.setEncoding('utf8');
+    child.stderr?.setEncoding('utf8');
+    child.stdout?.on('data', (chunk) => {
+      stdout = (stdout + chunk).slice(-32768);
+    });
+    child.stderr?.on('data', (chunk) => {
+      stderr = (stderr + chunk).slice(-8192);
+    });
+    child.on('error', () => finish(new Error('媒体控制启动失败')));
+    child.on('close', (code) => {
+      let value = null;
+      for (const line of stdout.trim().split(/\r?\n/).reverse()) {
+        if (!line.startsWith('{')) continue;
+        try {
+          value = JSON.parse(line);
+          break;
+        } catch {
+          // PowerShell can prepend non-JSON diagnostics.
+        }
+      }
+      if (code === 0 && value?.ok) {
+        finish(null, { ok: true, action, playbackStatus: cleanText(value.playbackStatus, 40) });
+        return;
+      }
+      const known = {
+        'No active media session': '未找到可控制的播放器',
+        'Player rejected the command': '当前播放器不支持该操作',
+        'Windows media session unavailable': 'Windows 媒体控制不可用',
+      };
+      finish(new Error(known[value?.message] || (stderr ? '播放器控制失败' : '切歌操作未完成')));
+    });
+  });
 }
 
 class LyricsService {
@@ -254,6 +331,8 @@ class LyricsService {
     this.loadingKey = '';
     this.lastFetchDuration = 0;
     this.lastFetchAt = 0;
+    this.controlFlight = null;
+    this.lastControlAt = 0;
     this.error = '';
     this.source = options.mediaSource === undefined
       ? process.platform === 'win32' ? new WindowsMediaSource({ logger: this.logger }) : null
@@ -305,6 +384,24 @@ class LyricsService {
 
   close() {
     this.source?.stop();
+  }
+
+  async control(action) {
+    if (!['previous', 'next', 'toggle'].includes(action)) throw new Error('不支持的媒体控制操作');
+    if (!this.config.enabled) throw new Error('请先开启歌词显示');
+    if (!this.media) throw new Error('当前没有可控制的播放器');
+    if (typeof this.source?.control !== 'function') throw new Error('当前系统不支持媒体控制');
+    if (this.controlFlight) throw new Error('媒体控制正在执行，请稍候');
+    if (this.now() - this.lastControlAt < 500) throw new Error('操作太快，请稍后再试');
+    this.lastControlAt = this.now();
+    this.controlFlight = Promise.resolve().then(() => this.source.control(action));
+    try {
+      const result = await this.controlFlight;
+      if (result?.playbackStatus) this.media.playbackStatus = cleanText(result.playbackStatus, 40);
+      return { ok: true, action, playbackStatus: this.media.playbackStatus };
+    } finally {
+      this.controlFlight = null;
+    }
   }
 
   async ingestMedia(value) {
@@ -544,6 +641,7 @@ class LyricsService {
 module.exports = {
   LyricsService,
   WindowsMediaSource,
+  controlWindowsMedia,
   lineAt,
   mediaKey,
   normalizeMedia,

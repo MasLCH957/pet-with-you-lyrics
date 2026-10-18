@@ -81,6 +81,8 @@ class PetSprite {
     // 余额气泡
     this.bubbleOn = false;
     this.bubbleTimer = null;
+    this.lyricsControlRect = null;
+    this.lyricsHover = false;
     this.balanceView = null;
     this.balanceWrap = false; // true = 当前余额气泡是不可用的「文字说明」（多行，需换行变体）
     this.prevTick = 0;
@@ -170,7 +172,7 @@ class PetSprite {
         // 光标离开窗口：菜单若开着立刻收起（菜单是窗口内 DOM，离开即不可达），再恢复穿透；
         // 对话弹窗开着则不恢复——弹窗是窗口内 DOM，鼠标还要回来点输入框（与 menuOpen 同守卫）
         this.closeMenu();
-        this.bubbleHover=false;this.syncInputBusy();this.updateReplyTimer();this.updateQuotaTimer();if (!this.chatOpen&&!this.bubbleSelecting) this.setInteractive(false);
+        this.bubbleHover=false;this.lyricsHover=false;this.syncInputBusy();this.updateReplyTimer();this.updateQuotaTimer();if (!this.chatOpen&&!this.bubbleSelecting) this.setInteractive(false);
       },
       { signal: ac.signal },
     );
@@ -972,7 +974,7 @@ class PetSprite {
    * 位移分不清"拖拽跟手"和"漫游/抛掷"）。所以由渲染端上报，主进程的兜底通道据此闭嘴。
    */
   inputBusy() {
-    return this.dragState.active || this.menuOpen || this.chatOpen || this.bubbleHover || this.bubbleSelecting;
+    return this.dragState.active || this.menuOpen || this.chatOpen || this.bubbleHover || this.bubbleSelecting || this.lyricsHover;
   }
 
   /**
@@ -996,6 +998,14 @@ class PetSprite {
     if (window.petBridge) window.petBridge.setInteractive(next);
   }
 
+  setLyricsControlRect(rect) {
+    this.lyricsControlRect = rect && Number.isFinite(rect.x) && Number.isFinite(rect.y) && rect.width > 0 && rect.height > 0 ? rect : null;
+    if (!this.lyricsControlRect && this.lyricsHover) {
+      this.lyricsHover = false;
+      this.syncInputBusy();
+    }
+  }
+
   onMouseMove(e) {
     // 拖拽中窗口逐帧跟随光标、指针相对窗口坐标会有帧级抖动——强制保持可交互，绝不翻转（翻转会断拖拽）
     if (this.dragState.active||this.bubbleSelecting) {
@@ -1015,10 +1025,13 @@ class PetSprite {
     const wy = Number.isFinite(e.clientY) ? e.clientY : toLocal(e.screenY) - (this.pos.y + VIEW.y - this.margin.t);
     const br=this.bubble.classList.contains('is-on')&&this.bubble.classList.contains('can-copy')?this.bubble.getBoundingClientRect():null;
     const overBubble=!!br&&wx>=br.left&&wx<=br.right&&wy>=br.top&&wy<=br.bottom;
+    const lr=this.lyricsControlRect;
+    const overLyrics=!!lr&&wx>=lr.x&&wx<=lr.x+lr.width&&wy>=lr.y&&wy<=lr.y+lr.height;
     if(this.bubbleHover!==overBubble){this.bubbleHover=overBubble;this.syncInputBusy();this.updateReplyTimer();this.updateQuotaTimer();}
+    if(this.lyricsHover!==overLyrics){this.lyricsHover=overLyrics;this.syncInputBusy();}
     const px = wx - this.margin.l;
     const py = wy - this.margin.t;
-    this.setInteractive(overBubble||(px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h));
+    this.setInteractive(overBubble||overLyrics||(px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h));
   }
 
   onClick() {
@@ -1139,6 +1152,11 @@ class PetSprite {
       ...(p.mode==='connected'?[{label:(p.windowMode==='gpt'?'✓ ':'')+'在GPT置顶，其余全屏隐藏',action:'fullscreen-except'}]:[]),
       {label:(p.windowMode==='normal'?'✓ ':'')+'普通显示',action:'fullscreen-never'}
     ]},{ label:'显示托盘图标',action:'show-tray' }];
+    tools.push({ label: '音乐控制', children: [
+      { label: '上一首', action: 'music-previous' },
+      { label: '播放 / 暂停', action: 'music-toggle' },
+      { label: '下一首', action: 'music-next' }
+    ] });
     tools.push({ label: '查看额度 / 用量', action: 'show-balance' });
     {
       tools.push({ label: '碎碎念', action: 'whisper' },{ label: '对话', action: 'chat' });
@@ -1177,6 +1195,11 @@ class PetSprite {
     if (!leaf || typeof leaf !== 'object') return;
     if(leaf.action==='show-tray'){
       fetch(BASE+'/tray/show',{method:'POST'}).catch(console.error);
+      return;
+    }
+    if(/^music-(previous|toggle|next)$/.test(leaf.action||'')){
+      const action=leaf.action.slice(6);
+      Promise.resolve(window.controlLyricsMedia?.(action)).catch(error=>this.showErrorNotice('音乐控制失败：'+(error?.message||'未知错误'),true));
       return;
     }
     if(/^fullscreen-|toggle-top$/.test(leaf.action||'')){

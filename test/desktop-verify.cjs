@@ -165,7 +165,7 @@ module.exports=async function verify({service,openSettings,getSettings,largeTray
     assert.deepEqual(manualRun,{manual:true,preserved:true,moved:true,stationary:true});
     await settings.webContents.executeJavaScript(`document.querySelector('#disableRoaming').checked=false;document.querySelector('#disableRoaming').onchange();window.PetSettingsAutosave.flush()`);
     const menu=await pet().webContents.executeJavaScript(`(()=>{const s=sprites[0];s.justDragged=false;s.onContextMenu({preventDefault(){},clientX:300,clientY:300});return document.querySelector('.dsh-pet-menu').textContent;})()`);
-    assert.ok(menu.includes('窗口设置')&&menu.includes('碎碎念')&&menu.includes('对话'));
+    assert.ok(menu.includes('窗口设置')&&menu.includes('音乐控制')&&menu.includes('上一首')&&menu.includes('下一首')&&menu.includes('碎碎念')&&menu.includes('对话'));
     await request('/preferences',{windowMode:'normal'});
     assert.ok(require('../runtime/main.js').getPetWindows().includes(pet()),'recreated pet stays registered with the window policy');
     await pet().webContents.executeJavaScript(`sprites[0].onMenuAction({action:'toggle-top'})`);await sleep(500);

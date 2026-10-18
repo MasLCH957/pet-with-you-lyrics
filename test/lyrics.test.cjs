@@ -290,3 +290,39 @@ test('a partial media snapshot retries when duration becomes available', async (
   assert.equal(service.status().current.text, '延迟读取到的歌词');
   service.close();
 });
+
+test('media controls forward previous, next and toggle with rate limiting', async (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'pet-lyrics-control-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  class FakeMediaSource {
+    constructor() {
+      this.actions = [];
+    }
+    start(callback) {
+      this.emit = callback;
+    }
+    stop() {}
+    async control(action) {
+      this.actions.push(action);
+      return { ok: true, action, playbackStatus: action === 'toggle' ? 'Paused' : 'Playing' };
+    }
+  }
+  const source = new FakeMediaSource();
+  let now = 1000;
+  const service = new LyricsService({
+    dataDir: directory,
+    mediaSource: source,
+    now: () => now,
+  });
+  service.configure({ enabled: true, autoFetch: false });
+  await source.emit({
+    media: { title: '控制测试', artist: '歌手', playbackStatus: 'Playing', positionMs: 0, endMs: 20000, lastUpdatedAt: 1000 },
+  });
+  assert.deepEqual(await service.control('next'), { ok: true, action: 'next', playbackStatus: 'Playing' });
+  await assert.rejects(service.control('previous'), /操作太快/);
+  now = 2000;
+  assert.deepEqual(await service.control('toggle'), { ok: true, action: 'toggle', playbackStatus: 'Paused' });
+  await assert.rejects(service.control('seek'), /不支持/);
+  assert.deepEqual(source.actions, ['next', 'toggle']);
+  service.close();
+});

@@ -17,6 +17,9 @@ class LyricsOverlay {
     this.closed = false;
     this.timer = null;
     this.lastSignature = '';
+    this.controlBusy = false;
+    this.noticeText = '';
+    this.noticeUntil = 0;
     this.el = document.createElement('div');
     this.el.className = 'pet-lyrics';
     this.el.hidden = true;
@@ -27,6 +30,27 @@ class LyricsOverlay {
     this.title.className = 'pet-lyrics-title';
     this.head.append(this.title);
 
+    this.controls = document.createElement('div');
+    this.controls.className = 'pet-lyrics-controls';
+    this.previous = this.createControl(
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h2.4v14H7zm11.8 0v14L9.4 12z"/></svg>',
+      '上一首',
+      'previous',
+    );
+    this.play = this.createControl(
+      '<svg class="pet-lyrics-pause-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4" width="4.5" height="16" rx="1.2"/><rect x="13.5" y="4" width="4.5" height="16" rx="1.2"/></svg>' +
+        '<svg class="pet-lyrics-play-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.2v13.6c0 .8.9 1.3 1.6.9l10.1-6.8c.6-.4.6-1.4 0-1.8L9.6 4.3C8.9 3.9 8 4.4 8 5.2z"/></svg>',
+      '播放 / 暂停',
+      'toggle',
+    );
+    this.play.classList.add('is-play-toggle');
+    this.nextControl = this.createControl(
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5h2.4v14H15zM5.2 5v14L14.6 12z"/></svg>',
+      '下一首',
+      'next',
+    );
+    this.controls.append(this.previous, this.play, this.nextControl);
+
     this.current = document.createElement('div');
     this.current.className = 'pet-lyrics-current';
     this.next = document.createElement('div');
@@ -36,8 +60,65 @@ class LyricsOverlay {
     this.progressFill = document.createElement('span');
     this.progress.append(this.progressFill);
 
-    this.el.append(this.head, this.current, this.next, this.progress);
+    this.el.append(this.head, this.controls, this.current, this.next, this.progress);
     sprite.stage.append(this.el);
+  }
+
+  createControl(text, label, action) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'pet-lyrics-control';
+    button.innerHTML = text;
+    button.title = label;
+    button.setAttribute('aria-label', label);
+    button.addEventListener('pointerdown', (event) => event.stopPropagation());
+    button.addEventListener('contextmenu', (event) => event.stopPropagation());
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      void this.control(action);
+    });
+    return button;
+  }
+
+  async control(action) {
+    if (this.controlBusy) return;
+    this.controlBusy = true;
+    this.setControlsDisabled(true);
+    const labels = { previous: '正在切换到上一首…', next: '正在切换到下一首…', toggle: '正在切换播放状态…' };
+    this.current.textContent = labels[action] || '正在控制播放器…';
+    this.current.classList.add('is-control-message');
+    try {
+      await controlLyricsMedia(action);
+    } catch (error) {
+      this.noticeText = '音乐控制失败：' + (error?.message || '未知错误');
+      this.noticeUntil = Date.now() + 3500;
+      this.current.textContent = this.noticeText;
+    } finally {
+      this.controlBusy = false;
+      this.setControlsDisabled(false);
+      this.lastSignature = '';
+      this.updateControlRect();
+    }
+  }
+
+  setControlsDisabled(disabled) {
+    for (const button of [this.previous, this.play, this.nextControl]) button.disabled = disabled;
+  }
+
+  updateControlRect() {
+    requestAnimationFrame(() => {
+      if (this.closed || this.el.hidden || !this.el.classList.contains('is-on')) {
+        this.sprite.setLyricsControlRect(null);
+        return;
+      }
+      const rect = this.controls.getBoundingClientRect();
+      this.sprite.setLyricsControlRect({
+        x: rect.left,
+        y: rect.top,
+        width: rect.width,
+        height: rect.height,
+      });
+    });
   }
 
   start() {
@@ -69,7 +150,8 @@ class LyricsOverlay {
     const current = state.current?.text || (state.next?.text ? state.next.text : '');
     const next = state.current ? state.next?.text || '' : '';
     const message = state.loading ? '正在匹配歌词…' : state.message || '暂无歌词';
-    const shown = current || message;
+    const notice = this.noticeText && Date.now() < this.noticeUntil ? this.noticeText : '';
+    const shown = notice || current || message;
     const signature = JSON.stringify([
       state.title,
       state.artist,
@@ -78,6 +160,7 @@ class LyricsOverlay {
       next,
       Math.round((state.progress || 0) * 1000),
       state.loading,
+      notice,
     ]);
     if (signature === this.lastSignature) return;
     this.lastSignature = signature;
@@ -86,6 +169,8 @@ class LyricsOverlay {
     this.el.classList.add('is-on');
     this.el.classList.toggle('is-paused', String(state.playbackStatus).toLowerCase() !== 'playing');
     this.el.classList.toggle('is-empty', !current);
+    this.current.classList.remove('is-control-message');
+    this.play.title = this.play.getAttribute('aria-label') + (String(state.playbackStatus).toLowerCase() === 'playing' ? '（暂停）' : '（播放）');
     this.title.textContent = state.artist ? state.title + ' · ' + state.artist : state.title;
     this.title.title = state.album ? state.title + ' · ' + state.artist + ' · ' + state.album : this.title.textContent;
     this.current.textContent = shown;
@@ -93,6 +178,7 @@ class LyricsOverlay {
     this.next.textContent = next;
     this.next.title = next;
     this.progressFill.style.setProperty('--lyrics-progress', Math.round(Math.max(0, Math.min(1, state.progress || 0)) * 100) + '%');
+    this.updateControlRect();
     window.__dshPetDebug.lyrics = {
       title: state.title,
       artist: state.artist,
@@ -106,14 +192,27 @@ class LyricsOverlay {
     this.lastSignature = '';
     this.el.classList.remove('is-on', 'is-paused', 'is-empty');
     this.el.hidden = true;
+    this.sprite.setLyricsControlRect(null);
     if (window.__dshPetDebug) delete window.__dshPetDebug.lyrics;
   }
 
   close() {
     this.closed = true;
     clearTimeout(this.timer);
+    this.sprite.setLyricsControlRect(null);
     this.el.remove();
   }
+}
+
+async function controlLyricsMedia(action) {
+  const response = await fetch(BASE + '/lyrics/control', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action }),
+  });
+  const value = await response.json().catch(() => ({}));
+  if (!response.ok || !value.ok) throw new Error(value.message || '播放器没有接受该操作');
+  return value;
 }
 
 function startLyricsOverlay() {

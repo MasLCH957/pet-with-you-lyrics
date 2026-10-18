@@ -191,6 +191,11 @@ async function startServer({dataDir,hooksAdapter={inspect:inspectConnection,inst
       if(route==='/tray/show'&&req.method==='POST'){onTray(true);return json({ok:true});}
       if(route==='/health')return json({ok:true,animations:fs.readdirSync(path.join(ROOT,'assets/webm')).length,lastHook,pendingChat:[...pendingChat],work:tasks.snapshot(),monitor:monitor.status(),mode:preferences.value.mode,apiConfigured:apiSettings.publicValue().configured});
       if(route==='/lyrics/status'&&req.method==='GET')return json(lyrics.status({offsetMs:preferences.value.lyricsOffsetMs}));
+      if(route==='/lyrics/control'&&req.method==='POST'){
+        const action=(await body()).action;
+        if(!['previous','next','toggle'].includes(action))return json({ok:false,message:'不支持的媒体控制操作'},400);
+        return json(await lyrics.control(action));
+      }
       if(route==='/lyrics/local/choose'&&req.method==='POST'){
         const selected=await onChooseLyrics();
         if(!selected||selected.canceled)return json({canceled:true});

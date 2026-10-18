@@ -2,7 +2,7 @@
   position: absolute;
   left: 50%;
   top: calc(100% + 8px);
-  width: clamp(210px, calc(var(--pet-size, 462px) * 0.82), 430px);
+  width: clamp(250px, calc(var(--pet-size, 462px) * 0.82), 430px);
   padding: 9px 14px 10px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 14px;
@@ -34,13 +34,94 @@
 .pet-lyrics-head {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 7px;
   min-width: 0;
+  padding: 0 114px 0 2px;
   color: rgba(230, 244, 246, 0.72);
   font-size: clamp(10px, calc(var(--pet-size, 462px) * 0.022), 13px);
   line-height: 1.35;
   white-space: nowrap;
+}
+
+.pet-lyrics-controls {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  pointer-events: auto;
+}
+
+.pet-lyrics-control {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(247, 255, 253, 0.9);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.pet-lyrics-control svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+.pet-lyrics-control.is-play-toggle {
+  width: 42px;
+  border-radius: 999px;
+  background: #25e39a;
+}
+
+.pet-lyrics-play-icon {
+  display: none !important;
+}
+
+.pet-lyrics.is-paused .pet-lyrics-pause-icon {
+  display: none !important;
+}
+
+.pet-lyrics.is-paused .pet-lyrics-play-icon {
+  display: block !important;
+}
+
+.pet-lyrics-control:hover:not(:disabled) {
+  background: transparent;
+  color: #fff;
+}
+
+.pet-lyrics-control.is-play-toggle {
+  color: #0c1110;
+}
+
+.pet-lyrics-control.is-play-toggle:hover:not(:disabled) {
+  background: #39f0ad;
+}
+
+.pet-lyrics-control:focus-visible {
+  outline: 2px solid #9ee8dc;
+  outline-offset: 2px;
+}
+
+.pet-lyrics-control.is-play-toggle:focus-visible {
+  outline-color: #0c1110;
+}
+
+.pet-lyrics-control:disabled {
+  cursor: wait;
+  opacity: 0.45;
 }
 
 .pet-lyrics-head::before {
@@ -90,6 +171,12 @@
 
 .pet-lyrics.is-empty .pet-lyrics-current {
   color: rgba(232, 245, 246, 0.72);
+  font-weight: 400;
+}
+
+.pet-lyrics-current.is-control-message {
+  color: rgba(232, 245, 246, 0.82);
+  font-size: clamp(11px, calc(var(--pet-size, 462px) * 0.029), 15px);
   font-weight: 400;
 }
 

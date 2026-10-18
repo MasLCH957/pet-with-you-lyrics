@@ -4,7 +4,7 @@ files.push('ATTRIBUTION.md','project.cjs','AGENTS.md','CONTRIBUTING.md','SECURIT
 files.push('bootstrap.cjs','hook-command.cjs','hook.cmd','Create-Shortcut.cmd','electron-builder.cjs','Uninstall-Integration.cmd','cleanup-startup.ps1','PREVIEW-NOTICE.txt');
 files.push('LICENSE','settings-store.cjs','detached-launch.cjs','launch-detached.ps1','client-launcher.cjs','client-launcher-entry.cjs');
 files.push('pet-shortcut.cjs');
-files.push('codex-network.cjs','safe-write.cjs','lyrics.cjs','lyrics-media.ps1');
+files.push('codex-network.cjs','safe-write.cjs','lyrics.cjs','lyrics-media.ps1','lyrics-control.ps1');
 files.push('legacy-package-data.cjs','shell-shortcut.ps1', 'repair-shortcuts.ps1','window-observer.cjs');
 const directories=['assets','runtime','ui','test','docs','scripts','.github','build'];
 // Installation content is separate from the source export and developer documentation.
@@ -12,7 +12,7 @@ const sourceOnly = new Set(['export-source.cjs','electron-builder.cjs','launch.c
 const runtimeFiles = files.filter(name => name.endsWith('.cjs') && !sourceOnly.has(name));
 runtimeFiles.push('package.json','config.mjs','tray.png','LICENSE','LICENSE.upstream','ATTRIBUTION.md','PREVIEW-NOTICE.txt',
   'hook.cmd','Review-Hooks.cmd','Uninstall-Integration.cmd','startup-watch.ps1','fullscreen-watch.ps1','cleanup-startup.ps1',
-  'shell-shortcut.ps1','repair-shortcuts.ps1','launch-detached.ps1','lyrics-media.ps1','scripts/dev-env.cjs',
+  'shell-shortcut.ps1','repair-shortcuts.ps1','launch-detached.ps1','lyrics-media.ps1','lyrics-control.ps1','scripts/dev-env.cjs',
   'build/icon.ico','build/codex-withu.ico','build/codex-withu.png');
 function exportSource(destination){
   if(fs.existsSync(destination))throw new Error('导出目录已存在，请选择新的目录');

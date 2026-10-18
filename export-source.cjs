@@ -4,7 +4,7 @@ files.push('ATTRIBUTION.md','project.cjs','AGENTS.md','CONTRIBUTING.md','SECURIT
 files.push('bootstrap.cjs','hook-command.cjs','hook.cmd','Create-Shortcut.cmd','electron-builder.cjs','Uninstall-Integration.cmd','cleanup-startup.ps1','PREVIEW-NOTICE.txt');
 files.push('LICENSE','settings-store.cjs','detached-launch.cjs','launch-detached.ps1','client-launcher.cjs','client-launcher-entry.cjs');
 files.push('pet-shortcut.cjs');
-files.push('codex-network.cjs','lyrics.cjs','lyrics-media.ps1');
+files.push('codex-network.cjs','safe-write.cjs','lyrics.cjs','lyrics-media.ps1');
 files.push('legacy-package-data.cjs','shell-shortcut.ps1', 'repair-shortcuts.ps1','window-observer.cjs');
 const directories=['assets','runtime','ui','test','docs','scripts','.github','build'];
 // Installation content is separate from the source export and developer documentation.

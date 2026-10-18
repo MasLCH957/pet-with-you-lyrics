@@ -245,3 +245,48 @@ test('disabling lyrics stops the media source and clears display state', async (
   });
   service.close();
 });
+
+test('a partial media snapshot retries when duration becomes available', async (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'pet-lyrics-partial-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  class FakeMediaSource {
+    start(callback) {
+      this.emit = callback;
+    }
+    stop() {}
+  }
+  const source = new FakeMediaSource();
+  let lookups = 0;
+  const service = new LyricsService({
+    dataDir: directory,
+    mediaSource: source,
+    now: () => 1000,
+    fetchImpl: async (url) => {
+      const parsed = new URL(url);
+      if (parsed.pathname.endsWith('/api/get')) {
+        lookups++;
+        if (!parsed.searchParams.get('duration')) return { ok: false, status: 400, json: async () => ({}) };
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            trackName: '完整歌曲',
+            artistName: '歌手',
+            duration: 20,
+            syncedLyrics: '[00:00.00]延迟读取到的歌词',
+            instrumental: false,
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => [] };
+    },
+  });
+  service.configure({ enabled: true, autoFetch: true });
+  const media = { title: '完整歌曲', artist: '歌手', album: '专辑', playbackStatus: 'Playing', positionMs: 0, lastUpdatedAt: 1000 };
+  await source.emit({ media: { ...media, endMs: 0 } });
+  assert.equal(service.status().lyrics, null);
+  await source.emit({ media: { ...media, endMs: 20000 } });
+  assert.equal(lookups, 2);
+  assert.equal(service.status().current.text, '延迟读取到的歌词');
+  service.close();
+});

@@ -11,12 +11,13 @@ const {Appearance}=require('./appearance.cjs');
 const {Preferences}=require('./preferences.cjs');
 const {ApiSettings,ApiClient}=require('./api-client.cjs');
 const {LyricsService}=require('./lyrics.cjs');
+const {writeJsonAtomic}=require('./safe-write.cjs');
 
 const {Diagnostics,issue}=require('./diagnostics.cjs');
 const ROOT=__dirname;
 const MIME={'.webm':'video/webm','.mov':'video/quicktime','.png':'image/png','.ttf':'font/ttf','.otf':'font/otf','.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8'};
 const readJson=(p,fallback)=>{try{return JSON.parse(fs.readFileSync(p,'utf8'));}catch{return fallback;}};
-const writeJson=(p,v)=>{fs.writeFileSync(p+'.tmp',JSON.stringify(v,null,2));fs.renameSync(p+'.tmp',p);};
+const writeJson=(p,v)=>writeJsonAtomic(p,v);
 async function startServer({dataDir,hooksAdapter={inspect:inspectConnection,install:installHooks},defaultMode='pet',monitorSessions=false,sessionRoot,lyricsMediaSource=null,onRuntimeInfo=()=>({development:false}),onClientLauncherStatus=()=>({configured:false}),onSettingsLocate=()=>{},onPetShortcut=async()=>({canceled:true}),onClientLauncher=async()=>({canceled:true}),onOpenThread=async()=>{throw new Error('无法打开对话');},onChange=()=>{},onPreferences=()=>{},onNotify=()=>{},onReview=()=>{},onChooseRuntime=async()=>({canceled:true}),onTray=()=>{},onFontImport=async()=>null,onChooseLyrics=async()=>null,onLogsOpen=async()=>{throw new Error('目录打开功能不可用');},onLogsExport=async()=>{throw new Error('日志导出功能不可用');},protect,unprotect}){
   fs.mkdirSync(dataDir,{recursive:true});fs.mkdirSync(path.join(dataDir,'pet'),{recursive:true});
   const settingsStore=new (require('./settings-store.cjs').SettingsStore)(dataDir);

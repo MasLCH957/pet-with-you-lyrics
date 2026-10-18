@@ -2,6 +2,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
+const { writeJsonAtomic } = require('./safe-write.cjs');
 
 const LRC_STAMP = /\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?\]/g;
 const LRC_META = /^\[(ar|ti|al|by|offset):(.*)\]$/i;
@@ -251,6 +252,8 @@ class LyricsService {
     this.mediaId = '';
     this.lyrics = null;
     this.loadingKey = '';
+    this.lastFetchDuration = 0;
+    this.lastFetchAt = 0;
     this.error = '';
     this.source = options.mediaSource === undefined
       ? process.platform === 'win32' ? new WindowsMediaSource({ logger: this.logger }) : null
@@ -267,10 +270,7 @@ class LyricsService {
   }
 
   writeJson(file, value) {
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    const temporary = file + '.' + process.pid + '.tmp';
-    fs.writeFileSync(temporary, JSON.stringify(value, null, 2), 'utf8');
-    fs.renameSync(temporary, file);
+    writeJsonAtomic(file, value);
   }
 
   configure(next = {}) {
@@ -283,6 +283,8 @@ class LyricsService {
       this.mediaId = '';
       this.lyrics = null;
       this.loadingKey = '';
+      this.lastFetchDuration = 0;
+      this.lastFetchAt = 0;
       return;
     }
     if (!wasEnabled) {
@@ -312,6 +314,8 @@ class LyricsService {
       this.mediaId = '';
       this.lyrics = null;
       this.loadingKey = '';
+    this.lastFetchDuration = 0;
+    this.lastFetchAt = 0;
       this.error = cleanText(value?.error || '');
       return;
     }
@@ -323,8 +327,13 @@ class LyricsService {
       this.mediaId = key;
       this.lyrics = this.loadForKey(key);
       this.loadingKey = '';
-      if (!this.lyrics && this.config.enabled && this.config.autoFetch) return this.fetchForCurrent();
+      this.lastFetchDuration = 0;
+      this.lastFetchAt = 0;
     }
+    const durationBucket = Math.round(media.endMs / 1000);
+    const retryDue = this.now() - this.lastFetchAt > 60000;
+    if (!this.lyrics && this.config.enabled && this.config.autoFetch && !this.loadingKey &&
+      (changed || durationBucket !== this.lastFetchDuration || retryDue)) return this.fetchForCurrent();
   }
 
   loadForKey(key) {
@@ -354,6 +363,8 @@ class LyricsService {
     const media = { ...this.media };
     const key = mediaKey(media);
     this.loadingKey = key;
+    this.lastFetchDuration = Math.round(media.endMs / 1000);
+    this.lastFetchAt = this.now();
     this.error = '';
     try {
       const result = await this.lookupOnline(media);
@@ -383,7 +394,7 @@ class LyricsService {
     const exact = await this.fetchImpl('https://lrclib.net/api/get?' + params, { headers, signal });
     let record = null;
     if (exact.ok) record = await exact.json();
-    else if (exact.status !== 404) throw new Error('lyrics lookup failed');
+    else if (![400, 404].includes(exact.status)) throw new Error('lyrics lookup failed');
     if (!record) {
       const searchParams = new URLSearchParams({ track_name: media.title });
       if (media.artist) searchParams.set('artist_name', media.artist);

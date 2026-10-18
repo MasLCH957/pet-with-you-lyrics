@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { writeJsonAtomic } = require('./safe-write.cjs');
 
 const FILE_NAME = 'settings.json';
 const legacy = {
@@ -10,10 +11,7 @@ const legacy = {
 };
 const privateSections = new Set(['api', 'apiProfiles', 'quota', 'quotaProfiles']);
 function atomic(file, value) {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  const temp = file + '.' + process.pid + '.tmp';
-  fs.writeFileSync(temp, JSON.stringify(value, null, 2), { mode: 0o600 });
-  fs.renameSync(temp, file);
+  writeJsonAtomic(file, value, { mode: 0o600 });
 }
 function read(file) {
   if (fs.statSync(file).size > 8 * 1024 * 1024) throw new Error('设置文件超过 8 MB，请检查文件。');

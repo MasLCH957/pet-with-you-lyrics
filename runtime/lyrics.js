@@ -9,6 +9,8 @@
  */
 'use strict';
 
+const PAUSE_HIDE_DELAY_MS = 5000;
+
 let activeLyricsOverlay = null;
 
 class LyricsOverlay {
@@ -17,6 +19,9 @@ class LyricsOverlay {
     this.closed = false;
     this.timer = null;
     this.layoutFrame = null;
+    this.pauseHideTimer = null;
+    this.pausedTrackKey = '';
+    this.pauseAutoHidden = false;
     this.lastSignature = '';
     this.controlBusy = false;
     this.noticeText = '';
@@ -154,10 +159,43 @@ class LyricsOverlay {
     void this.tick();
   }
 
+  clearPauseAutoHide(resetTrack = false) {
+    if (this.pauseHideTimer !== null) {
+      window.clearTimeout(this.pauseHideTimer);
+      this.pauseHideTimer = null;
+    }
+    this.pauseAutoHidden = false;
+    if (resetTrack) this.pausedTrackKey = '';
+  }
+
+  updatePauseAutoHide(state) {
+    const playbackStatus = String(state.playbackStatus || '').toLowerCase();
+    const paused = playbackStatus === 'paused' || playbackStatus === 'stopped';
+    if (!paused) {
+      this.clearPauseAutoHide(true);
+      return false;
+    }
+    const trackKey = [state.title, state.artist, state.album, state.durationMs].join('\u0000');
+    if (trackKey !== this.pausedTrackKey) {
+      this.clearPauseAutoHide(true);
+      this.pausedTrackKey = trackKey;
+    }
+    if (!this.pauseAutoHidden && this.pauseHideTimer === null) {
+      this.pauseHideTimer = window.setTimeout(() => {
+        this.pauseHideTimer = null;
+        if (this.closed) return;
+        this.pauseAutoHidden = true;
+        this.hide();
+      }, PAUSE_HIDE_DELAY_MS);
+    }
+    return this.pauseAutoHidden;
+  }
+
   async tick() {
     if (this.closed) return;
     try {
       if (window.petPreferences?.lyricsEnabled === false) {
+        this.clearPauseAutoHide(true);
         this.hide();
       } else {
         const response = await fetch(BASE + '/lyrics/status', { cache: 'no-store' });
@@ -173,9 +211,11 @@ class LyricsOverlay {
 
   render(state) {
     if (!state || !state.enabled || !state.available || !state.title) {
+      this.clearPauseAutoHide(true);
       this.hide();
       return;
     }
+    if (this.updatePauseAutoHide(state)) return;
     this.queueLayout();
     const current = state.current?.text || (state.next?.text ? state.next.text : '');
     const next = state.current ? state.next?.text || '' : '';
@@ -231,6 +271,7 @@ class LyricsOverlay {
   close() {
     this.closed = true;
     clearTimeout(this.timer);
+    this.clearPauseAutoHide(true);
     cancelAnimationFrame(this.layoutFrame);
     this.sprite.setLyricsControlRect(null);
     this.el.remove();

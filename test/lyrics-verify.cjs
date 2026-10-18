@@ -98,4 +98,59 @@ module.exports = async function verifyLyrics({ service, pet, directory }) {
   } finally {
     await pet.webContents.executeJavaScript(`(()=>{const s=sprites[0],saved=window.__lyricsClipRestore;if(saved){window.petPreferences=saved.prefs;s.snapAttachment=saved.attachment;s.sendBounds(saved.pos.x,saved.pos.y);activeLyricsOverlay.queueLayout();delete window.__lyricsClipRestore;}})()`);
   }
+
+  const pauseStartedAt = Date.now();
+  await service.lyrics.ingestMedia({
+    media: {
+      title: '歌词界面测试',
+      artist: 'pet-with-you',
+      album: 'UI fixture',
+      playbackStatus: 'Paused',
+      positionMs: 3500,
+      startMs: 0,
+      endMs: 12000,
+      lastUpdatedAt: 0,
+    },
+  });
+  let pausedVisible = false;
+  for (let index = 0; index < 20; index++) {
+    pausedVisible = await pet.webContents.executeJavaScript(
+      `document.querySelector('.pet-lyrics')?.classList.contains('is-on') && document.querySelector('.pet-lyrics')?.classList.contains('is-paused')`,
+    );
+    if (pausedVisible) break;
+    await sleep(100);
+  }
+  assert.equal(pausedVisible, true, 'paused lyrics should remain visible before the delay');
+  let pausedHidden = false;
+  for (let index = 0; index < 130; index++) {
+    pausedHidden = await pet.webContents.executeJavaScript(
+      `!document.querySelector('.pet-lyrics')?.classList.contains('is-on')`,
+    );
+    if (pausedHidden) break;
+    await sleep(50);
+  }
+  assert.equal(pausedHidden, true, 'lyrics should hide after five seconds of pause');
+  assert.ok(Date.now() - pauseStartedAt >= 4500, 'lyrics must not hide before the pause delay');
+
+  await service.lyrics.ingestMedia({
+    media: {
+      title: '歌词界面测试',
+      artist: 'pet-with-you',
+      album: 'UI fixture',
+      playbackStatus: 'Playing',
+      positionMs: 3500,
+      startMs: 0,
+      endMs: 12000,
+      lastUpdatedAt: Date.now(),
+    },
+  });
+  let resumedVisible = false;
+  for (let index = 0; index < 20; index++) {
+    resumedVisible = await pet.webContents.executeJavaScript(
+      `document.querySelector('.pet-lyrics')?.classList.contains('is-on') && !document.querySelector('.pet-lyrics')?.classList.contains('is-paused')`,
+    );
+    if (resumedVisible) break;
+    await sleep(100);
+  }
+  assert.equal(resumedVisible, true, 'lyrics should reappear immediately when playback resumes');
 };

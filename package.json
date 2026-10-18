@@ -1,6 +1,6 @@
 {
   "name": "pet-with-you-lyrics",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "private": true,
   "main": "bootstrap.cjs",
   "scripts": {
